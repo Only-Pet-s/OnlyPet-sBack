@@ -23,6 +23,7 @@ public class FirebaseConfig {
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                .setStorageBucket("onlypets-7a50a.firebasestorage.app")
                 .build();
 
         System.out.println(" FirebaseApp 초기화 완료");
