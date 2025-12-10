@@ -16,28 +16,26 @@ import java.io.IOException;
 
 @Configuration
 public class FirebaseConfig {
-    @PostConstruct
-    public void init() throws IOException {
-        if (FirebaseApp.getApps().isEmpty()) {
-            ClassPathResource resource = new ClassPathResource("firebase/firebase_key.json");
 
+    @Bean
+    public FirebaseApp firebaseApp() throws IOException {
+        ClassPathResource resource = new ClassPathResource("firebase/firebase_key.json");
 
-            FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
-                    .build();
+        FirebaseOptions options = FirebaseOptions.builder()
+                .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                .build();
 
-            FirebaseApp.initializeApp(options);
-            System.out.println("Firestore 초기화 완료");
-        }
+        System.out.println(" FirebaseApp 초기화 완료");
+        return FirebaseApp.initializeApp(options);
     }
 
     @Bean
-    public Firestore firestore() {
+    public Firestore firestore(FirebaseApp firebaseApp) {
         return FirestoreClient.getFirestore();
     }
 
     @Bean
-    public FirebaseAuth firebaseAuth() {
-        return FirebaseAuth.getInstance(); // Auth
+    public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
+        return FirebaseAuth.getInstance();
     }
 }
