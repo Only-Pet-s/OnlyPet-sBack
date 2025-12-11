@@ -1,5 +1,6 @@
 package com.op.back.auth.controller;
 
+import com.op.back.auth.dto.LoginDTO;
 import com.op.back.auth.dto.RegisterDTO;
 import com.op.back.auth.dto.ResponseDTO;
 import com.op.back.auth.service.AuthService;
@@ -10,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.ObjectMapper;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -36,5 +39,13 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new ResponseDTO<>(false, e.getMessage(), null));
         }
     }
-
+    @PostMapping("/login")
+    public ResponseEntity<ResponseDTO<?>> login(@RequestBody LoginDTO loginDTO) {
+        try{
+            Map<String, Object> data = authService.login(loginDTO);
+            return ResponseEntity.ok(new ResponseDTO<>(true, "로그인 성공", data));
+        }catch(Exception e){
+            return ResponseEntity.status(401).body(new ResponseDTO<>(false, "로그인 실패: " + e.getMessage(), null));
+        }
+    }
 }

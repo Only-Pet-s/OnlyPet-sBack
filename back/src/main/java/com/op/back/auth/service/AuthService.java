@@ -1,5 +1,6 @@
 package com.op.back.auth.service;
 
+import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserRecord;
 import com.google.cloud.firestore.Firestore;
@@ -7,11 +8,16 @@ import com.google.cloud.firestore.DocumentReference;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.StorageClient;
 
+import com.op.back.auth.dto.LoginDTO;
 import com.op.back.auth.dto.RegisterDTO;
 import com.op.back.auth.dto.PetDTO;
 
+import com.op.back.auth.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.google.cloud.storage.Bucket;
@@ -32,6 +38,12 @@ public class AuthService {
 
     @Autowired
     private FirebaseApp firebaseApp;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Value("${firebase.api.key}")
+    private String firebaseKey;
 
     public String registerUser(RegisterDTO dto,
                                MultipartFile profileImage,
@@ -87,5 +99,41 @@ public class AuthService {
         Blob blob = bucket.create(path, file.getBytes(), file.getContentType());
 
         return "https://storage.googleapis.com/" + bucket.getName() + "/" + blob.getName();
+    }
+
+    public Map<String, Object> login(LoginDTO dto) throws Exception {
+        String url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + firebaseKey;
+
+        RestTemplate rest = new RestTemplate();
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("email", dto.getEmail());
+        request.put("password", dto.getPassword());
+        request.put("returnSecureToken", true);
+
+        ResponseEntity<Map> response = rest.postForEntity(url, request, Map.class);
+
+        if(!response.getStatusCode().is2xxSuccessful()){
+            throw new RuntimeException("이메일 또는 비밀번호가 잘못되었습니다.");
+        }
+
+        String uid = (String) response.getBody().get("localId");
+
+        DocumentSnapshot snapshot = firestore.collection("users").document(uid).get().get();
+
+        if(!snapshot.exists()){
+            throw new RuntimeException("사용자 정보가 일치하지 않습니다.");
+        }
+
+        Map<String, Object> userInfo = snapshot.getData();
+
+        String token = jwtUtil.createToken(uid,dto.getEmail());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+        result.put("uid", uid);
+        result.put("userInfo", userInfo);
+
+        return result;
     }
 }
