@@ -45,6 +45,9 @@ public class AuthService {
     @Value("${firebase.api.key}")
     private String firebaseKey;
 
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+
     public String registerUser(RegisterDTO dto,
                                MultipartFile profileImage,
                                MultipartFile certificateFile) throws Exception {
@@ -127,13 +130,47 @@ public class AuthService {
 
         Map<String, Object> userInfo = snapshot.getData();
 
-        String token = jwtUtil.createToken(uid,dto.getEmail());
+        String token = jwtUtil.createToken(uid,dto.getEmail()); // AT
+
+        String rToken = jwtUtil.createRefreshToken(uid); // RT
+
+        long refreshTTL = 1000L * 60 * 60 * 24 * 30;
+        refreshTokenService. saveRefreshToken(uid, rToken, refreshTTL);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("token", token);
         result.put("uid", uid);
+        result.put("accessToken", token);
+        result.put("refreshToken", rToken);
         result.put("userInfo", userInfo);
 
         return result;
+    }
+
+    public Map<String, Object> refresh(String uid, String cRefreshToken){
+        String storedToken = refreshTokenService.getRefreshToken(uid);
+
+        if(storedToken == null){
+            throw new RuntimeException("Refresh Token 존재하지 않습니다. 다시 로그인해주세요.");
+        }
+
+        if(!storedToken.equals(cRefreshToken)){
+            throw new RuntimeException("Refresh Token 불일치");
+        }
+
+        if(!jwtUtil.validateToken(cRefreshToken)){
+            throw new RuntimeException("Refresh Token이 만료되었습니다. 다시 로그인 해주세요.");
+        }
+
+        String email = jwtUtil.getEmail(cRefreshToken);
+        String newAccessToken = jwtUtil.createToken(uid, email);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("accessToken", newAccessToken);
+
+        return result;
+    }
+
+    public void logout(String uid){
+        refreshTokenService.deleteRefreshToken(uid);
     }
 }

@@ -48,4 +48,29 @@ public class AuthController {
             return ResponseEntity.status(401).body(new ResponseDTO<>(false, "로그인 실패: " + e.getMessage(), null));
         }
     }
+    @PostMapping("/refresh")
+    public ResponseEntity<ResponseDTO<?>> refresh(@RequestBody Map<String, String> data) {
+        try{
+            String uid = data.get("uid");
+            String refreshToken  = data.get("refreshToken");
+
+            Map<String, Object> newTokens = authService.refresh(uid, refreshToken);
+
+            return ResponseEntity.ok(
+                    new ResponseDTO<>(true, "토큰 재발급 성공", newTokens)
+            );
+        }catch(Exception e){
+            return ResponseEntity.status(401).body(new ResponseDTO<>(false, "토큰 재발급 실패"+e.getMessage(), null));
+        }
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<ResponseDTO<?>> logout(@RequestBody Map<String, String> data) {
+        try{
+            String uid = data.get("uid");
+            authService.logout(uid);
+            return ResponseEntity.ok(new ResponseDTO<>(true, "로그아웃 성공", null));
+        }catch(Exception e){
+            return ResponseEntity.badRequest().body(new ResponseDTO<>(false, "로그아웃 실패:"+e.getMessage(), null));
+        }
+    }
 }
