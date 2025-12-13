@@ -173,4 +173,38 @@ public class AuthService {
     public void logout(String uid){
         refreshTokenService.deleteRefreshToken(uid);
     }
+
+    public void changePassword(String uid, String email, String oldPw, String newPw){
+
+        // 먼저 이전 비밀번호 검증 절차
+        String url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + firebaseKey;
+
+        RestTemplate rest = new RestTemplate();
+
+        Map<String, Object> request1 = new HashMap<>();
+        request1.put("email", email);
+        request1.put("password", oldPw);
+        request1.put("returnSecureToken", true);
+
+        ResponseEntity<Map> response1 = rest.postForEntity(url, request1, Map.class);
+        String idToken = (String) response1.getBody().get("idToken");
+
+        if(!response1.getStatusCode().is2xxSuccessful()){
+            throw new RuntimeException("기존 비밀번호가 일치하지 않습니다.");
+        }
+
+        // 그 이후 비밀번호 변경 절차
+        String updateUrl = "https://identitytoolkit.googleapis.com/v1/accounts:update?key=" + firebaseKey;
+
+        Map<String, Object> request2 = new HashMap<>();
+        request2.put("idToken", idToken);
+        request2.put("password", newPw);
+        request2.put("returnSecureToken", true);
+
+        ResponseEntity<Map> updateRes =  rest.postForEntity(updateUrl, request2, Map.class);
+
+        if(!updateRes.getStatusCode().is2xxSuccessful()){
+            throw new RuntimeException("비밀번호 변경 실패");
+        }
+    }
 }
