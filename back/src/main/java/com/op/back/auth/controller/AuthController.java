@@ -148,20 +148,25 @@ public class AuthController {
         }
     }
 
-    @PatchMapping(value = "/updateRole", consumes = "multipart/form-data")
+    // 계정(판매자/강의자/펫시터 구분)
+    @PostMapping(value = "/updateRole", consumes = "multipart/form-data")
     public ResponseEntity<ResponseDTO<?>> updateRole(
             @RequestHeader("Authorization") String authHeader,
-            @RequestPart(required = false) Boolean seller,
-            @RequestPart(required = false) Boolean instructor,
-            @RequestPart(required = false) Boolean petsitter,
-            @RequestPart(required = false) MultipartFile businessFile,     // 판매자용
-            @RequestPart(required = false) MultipartFile certificateFile   // 강의자 및 펫시터 용
+            @RequestPart(required = false) String seller,
+            @RequestPart(required = false) String instructor,
+            @RequestPart(required = false) String petsitter,
+            @RequestPart(required = false) MultipartFile businessFile,
+            @RequestPart(required = false) MultipartFile certificateFile
     ) {
         try {
             String token = authHeader.substring(7);
             String uid = jwtUtil.getUid(token);
 
-            authService.updateRole(uid, seller, instructor, petsitter, businessFile, certificateFile);
+            Boolean sellerFlag = seller != null ? Boolean.parseBoolean(seller) : null;
+            Boolean instructorFlag = instructor != null ? Boolean.parseBoolean(instructor) : null;
+            Boolean petsitterFlag = petsitter != null ? Boolean.parseBoolean(petsitter) : null;
+
+            authService.updateRole(uid, sellerFlag, instructorFlag, petsitterFlag, businessFile, certificateFile);
 
             return ResponseEntity.ok(new ResponseDTO<>(true, "계정 수정 성공", null));
 

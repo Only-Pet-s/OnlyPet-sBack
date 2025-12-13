@@ -240,11 +240,85 @@ public class AuthService {
         return newUrl;
     }
 
-    public void updateRole(String uid, Boolean seller, Boolean instructor, Boolean petsitter, MultipartFile businessFile, MultipartFile certificateFile) throws Exception{
+    public void updateRole(
+            String uid,
+            Boolean seller,
+            Boolean instructor,
+            Boolean petsitter,
+            MultipartFile businessFile,
+            MultipartFile certificateFile
+    ) throws Exception {
+
         DocumentReference ref = firestore.collection("users").document(uid);
         DocumentSnapshot snapshot = ref.get().get();
 
-        //boolean
+        boolean currentSeller = snapshot.getBoolean("seller") != null && snapshot.getBoolean("seller");
+        boolean currentInstructor = snapshot.getBoolean("instructor") != null && snapshot.getBoolean("instructor");
+        boolean currentPetsitter = snapshot.getBoolean("petsitter") != null && snapshot.getBoolean("petsitter");
+
+        Map<String, Object> updates = new HashMap<>();
+
+        // SELLER 처리
+        if (seller != null && seller) {
+
+            if (!currentSeller) {
+                // false → true 로 전환 → 파일 필수
+                if (businessFile == null) throw new RuntimeException("사업자 등록증 파일이 필요합니다.");
+            }
+
+            if (businessFile != null) {
+                // 기존 파일 삭제
+                String oldBiz = snapshot.getString("businessCertificateUrl");
+                deleteFromStorage(oldBiz);
+
+                // 새 파일 업로드
+                String newBizUrl = uploadToStorage(uid, businessFile, "certificates");
+                updates.put("businessCertificateUrl", newBizUrl);
+            }
+
+            updates.put("seller", seller);
+        }
+
+        // INSTRUCTOR 처리
+        if (instructor != null && instructor) {
+
+            if (!currentInstructor) {
+                if (certificateFile == null) throw new RuntimeException("강의자 자격증 파일이 필요합니다.");
+            }
+
+            if (certificateFile != null) {
+                String oldInst = snapshot.getString("instructorCertificateUrl");
+                deleteFromStorage(oldInst);
+
+                String newUrl = uploadToStorage(uid, certificateFile, "certificates");
+                updates.put("instructorCertificateUrl", newUrl);
+            }
+
+            updates.put("instructor", instructor);
+        }
+
+        // PETSITTER 처리
+        if (petsitter != null && petsitter) {
+
+            if (!currentPetsitter) {
+                if (certificateFile == null) throw new RuntimeException("펫시터 자격증 파일이 필요합니다.");
+            }
+
+            if (certificateFile != null) {
+                String oldPet = snapshot.getString("petsitterCertificateUrl");
+                deleteFromStorage(oldPet);
+
+                String newUrl = uploadToStorage(uid, certificateFile, "certificates");
+                updates.put("petsitterCertificateUrl", newUrl);
+            }
+
+            updates.put("petsitter", petsitter);
+        }
+
+        // 마지막으로 DB 업데이트
+        if (!updates.isEmpty()) {
+            ref.update(updates).get();
+        }
     }
 
     // firebase storage 업로드 메소드
@@ -292,7 +366,7 @@ public class AuthService {
             // 6. 파일 삭제
             boolean deleted = bucket.get(objectName).delete();
 
-            System.out.println("Deleted " + objectName + " => " + deleted);
+            //System.out.println("Deleted " + objectName + " = " + deleted);
 
         } catch (Exception e) {
             e.printStackTrace();
