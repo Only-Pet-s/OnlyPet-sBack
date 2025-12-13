@@ -110,4 +110,17 @@ public class AuthController {
         }
     }
 
+    @PatchMapping("/updateInfo")
+    public ResponseEntity<ResponseDTO<?>> update(@RequestBody Map<String, Object> data, @RequestHeader("Authorization") String header){
+        try{
+            String token = header.substring(7);
+            String uid = jwtUtil.getUid(token);
+            authService.updateUserInfo(uid, data);
+
+            return ResponseEntity.ok(new ResponseDTO<>(true, "회원 정보 수정 성공", null));
+        }catch(Exception e){
+            return ResponseEntity.badRequest().body(new  ResponseDTO<>(false, "회원 정보 수정 실패: " + e.getMessage(), null));
+        }
+    }
+
 }

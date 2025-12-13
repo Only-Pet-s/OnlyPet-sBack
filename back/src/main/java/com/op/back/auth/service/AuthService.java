@@ -1,6 +1,8 @@
 package com.op.back.auth.service;
 
+import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.WriteResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserRecord;
 import com.google.cloud.firestore.Firestore;
@@ -206,5 +208,12 @@ public class AuthService {
         if(!updateRes.getStatusCode().is2xxSuccessful()){
             throw new RuntimeException("비밀번호 변경 실패");
         }
+    }
+
+    public void updateUserInfo(String uid, Map<String, Object> data) throws Exception{
+        DocumentReference userRef = firestore.collection("users").document(uid);
+
+        ApiFuture<WriteResult> future = userRef.update(data);
+        future.get();
     }
 }
