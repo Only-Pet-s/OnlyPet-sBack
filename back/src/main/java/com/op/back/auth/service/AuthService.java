@@ -25,6 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.google.cloud.storage.Bucket;
 import com.google.cloud.storage.Blob;
 
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -216,4 +219,85 @@ public class AuthService {
         ApiFuture<WriteResult> future = userRef.update(data);
         future.get();
     }
+
+    public String updateProfileImage(String uid, MultipartFile file) throws Exception{
+        DocumentReference ref = firestore.collection("users").document(uid);
+        DocumentSnapshot snapshot = ref.get().get();
+
+        // 1) 기존 이미지 URL 가져오기
+        String oldImageUrl = snapshot.contains("profileImageUrl") ?
+                snapshot.getString("profileImageUrl") : null;
+
+        // 2) 기존 파일 삭제
+        deleteFromStorage(oldImageUrl);
+
+        // 3) 새 파일 업로드
+        String newUrl = uploadToStorage(uid, file, "profiles");
+
+        // 4) Firestore 업데이트
+        ref.update("profileImageUrl", newUrl);
+
+        return newUrl;
+    }
+
+    public void updateRole(String uid, Boolean seller, Boolean instructor, Boolean petsitter, MultipartFile businessFile, MultipartFile certificateFile) throws Exception{
+        DocumentReference ref = firestore.collection("users").document(uid);
+        DocumentSnapshot snapshot = ref.get().get();
+
+        //boolean
+    }
+
+    // firebase storage 업로드 메소드
+    private String uploadToStorage(String uid, MultipartFile file, String type) throws Exception {
+        String filename = type + "/" + uid + "_" + System.currentTimeMillis()
+                + "_" + file.getOriginalFilename();
+
+        Bucket bucket = StorageClient.getInstance().bucket();
+        bucket.create(filename, file.getBytes(), file.getContentType());
+
+        return "https://firebasestorage.googleapis.com/v0/b/" + bucket.getName()
+                + "/o/" + URLEncoder.encode(filename, "UTF-8") + "?alt=media";
+    }
+
+    // firebase storage에 기존에 존재하는 파일 삭제
+    private void deleteFromStorage(String fileUrl) {
+        try {
+            if (fileUrl == null || fileUrl.isEmpty()) return;
+
+            // 1. 현재 버킷명 정확히 가져오기
+            Bucket bucket = StorageClient.getInstance().bucket();
+            String bucketName = bucket.getName();
+
+            // 2. URL 디코딩
+            String decoded = URLDecoder.decode(fileUrl, StandardCharsets.UTF_8);
+
+            // 3. URL prefix, suffix 정의
+            String prefix = "https://firebasestorage.googleapis.com/v0/b/" + bucketName + "/o/";
+
+            if (!decoded.startsWith(prefix)) {
+                System.out.println("URL prefix not matching: " + decoded);
+                return;
+            }
+
+            // 4. suffix 위치 찾기
+            int endIndex = decoded.indexOf("?alt=");
+            if (endIndex == -1) {
+                System.out.println("URL missing ?alt= parameter");
+                return;
+            }
+
+            // 5. object name 추출
+            String objectName = decoded.substring(prefix.length(), endIndex);
+
+            // 6. 파일 삭제
+            boolean deleted = bucket.get(objectName).delete();
+
+            System.out.println("Deleted " + objectName + " => " + deleted);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Storage 파일 삭제 실패: " + e.getMessage());
+        }
+    }
+
 }

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -123,4 +124,50 @@ public class AuthController {
         }
     }
 
+    @PatchMapping(value="/updatePImg", consumes = "multipart/form-data")
+    public ResponseEntity<ResponseDTO<?>> updateProfileImage(
+            @RequestPart("file") MultipartFile file,
+            @RequestHeader("Authorization") String header
+    ){
+        try{
+            String token = header.substring(7);
+            String uid = jwtUtil.getUid(token);
+
+            String imageUrl = authService.updateProfileImage(uid, file);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("profileImageUrl", imageUrl);
+
+            return ResponseEntity.ok(
+                    new ResponseDTO<>(true, "프로필 사진 변경", result)
+            );
+        }catch(Exception e){
+            return ResponseEntity.badRequest().body(
+                    new ResponseDTO<>(false, "프로필 사진 변경 실패" + e.getMessage(), null)
+            );
+        }
+    }
+
+    @PatchMapping(value = "/updateRole", consumes = "multipart/form-data")
+    public ResponseEntity<ResponseDTO<?>> updateRole(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestPart(required = false) Boolean seller,
+            @RequestPart(required = false) Boolean instructor,
+            @RequestPart(required = false) Boolean petsitter,
+            @RequestPart(required = false) MultipartFile businessFile,     // 판매자용
+            @RequestPart(required = false) MultipartFile certificateFile   // 강의자 및 펫시터 용
+    ) {
+        try {
+            String token = authHeader.substring(7);
+            String uid = jwtUtil.getUid(token);
+
+            authService.updateRole(uid, seller, instructor, petsitter, businessFile, certificateFile);
+
+            return ResponseEntity.ok(new ResponseDTO<>(true, "계정 수정 성공", null));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseDTO<>(false, "계정 수정 실패: " + e.getMessage(), null));
+        }
+    }
 }
