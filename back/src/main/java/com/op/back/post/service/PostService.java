@@ -146,69 +146,58 @@ public class PostService {
     }
 
     //좋아요 추가
-    public void likePost(String postId,String uid) throws ExecutionException, InterruptedException {
-        DocumentReference postRef = firestore.collection(POSTS_COLLECTION).document(postId);
-        DocumentReference likeRef = postRef.collection("likes").document(uid);
+    public void likePost(String postId, String uid)
+        throws ExecutionException, InterruptedException {
 
-        firestore.runTransaction(transaction -> {
-            DocumentSnapshot likeSnap = transaction.get(likeRef).get();
-            if(!likeSnap.exists()){
-                Map<String, Object> likeData = new HashMap<>();
-                likeData.put("likedAt", Timestamp.now());
-                transaction.set(likeRef, likeData);
+        DocumentReference postRef =
+                firestore.collection(POSTS_COLLECTION).document(postId);
+        DocumentReference likeRef =
+                postRef.collection("likes").document(uid);
 
-                DocumentSnapshot postSnap = transaction.get(postRef).get();
-                Long likeCount = postSnap.getLong("likeCount");
-                if (likeCount == null) likeCount = 0L;
-                transaction.update(postRef,"likeCount",likeCount+1);
+        firestore.runTransaction(tx -> {
+
+            // 모든 READ 먼저
+            DocumentSnapshot likeSnap = tx.get(likeRef).get();
+            DocumentSnapshot postSnap = tx.get(postRef).get();
+
+            if (!likeSnap.exists()) {
+
+                Long likeCount =
+                        Optional.ofNullable(postSnap.getLong("likeCount")).orElse(0L);
+
+                // 그 다음 WRITE
+                tx.set(likeRef, Map.of("likedAt", Timestamp.now()));
+                tx.update(postRef, "likeCount", likeCount + 1);
             }
+
             return null;
         }).get();
     }
 
     //좋아요 취소
     public void unlikePost(String postId, String uid) throws ExecutionException, InterruptedException {
-        DocumentReference postRef = firestore.collection(POSTS_COLLECTION).document(postId);
-        DocumentReference likeRef = postRef.collection("likes").document(uid);
+        DocumentReference postRef =
+            firestore.collection(POSTS_COLLECTION).document(postId);
+        DocumentReference likeRef =
+                postRef.collection("likes").document(uid);
+        firestore.runTransaction(tx -> {
+            DocumentSnapshot likeSnap = tx.get(likeRef).get();
+            DocumentSnapshot postSnap = tx.get(postRef).get();
 
-        firestore.runTransaction(transaction -> {
-            DocumentSnapshot likeSnap = transaction.get(likeRef).get();
             if (likeSnap.exists()) {
-                transaction.delete(likeRef);
-
-                DocumentSnapshot postSnap = transaction.get(postRef).get();
-                Long likeCount = postSnap.getLong("likeCount");
-                if (likeCount == null) likeCount = 0L;
-                long newCount = Math.max(0L, likeCount - 1);
-                transaction.update(postRef, "likeCount", newCount);
+                Long likeCount =
+                        Optional.ofNullable(postSnap.getLong("likeCount")).orElse(0L);
+                tx.delete(likeRef);
+                tx.update(postRef, "likeCount", Math.max(0L, likeCount - 1));
             }
+
             return null;
         }).get();
     }
 
     //북마크 추가
-    public void bookmarkPost(String postId,String uid)
-            throws ExecutionException, InterruptedException {
-        DocumentReference bookmarRef = firestore
-                .collection("users")
-                .document(uid)
-                .collection("bookmarks")
-                .document("posts")
-                .collection("items")
-                .document(postId);
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("postId", postId);
-        data.put("bookmarkedAt", Timestamp.now());
-
-        bookmarRef.set(data).get();
-    }
-
-
-    //북마크 제거
-    public void unbookmarkPost(String postId, String uid)
+    public void bookmarkPost(String postId, String uid)
         throws ExecutionException, InterruptedException {
-
         DocumentReference bookmarkRef = firestore
                 .collection("users")
                 .document(uid)
@@ -217,7 +206,36 @@ public class PostService {
                 .collection("items")
                 .document(postId);
 
-        bookmarkRef.delete().get();
+        firestore.runTransaction(tx -> {
+            DocumentSnapshot snap = tx.get(bookmarkRef).get();
+            if (!snap.exists()) {
+                tx.set(bookmarkRef, Map.of(
+                        "postId", postId,
+                        "bookmarkedAt", Timestamp.now()
+                ));
+            }
+            return null;
+        }).get();
+    }
+
+
+    //북마크 제거
+    public void unbookmarkPost(String postId, String uid)
+        throws ExecutionException, InterruptedException {
+        DocumentReference bookmarkRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("bookmarks")
+                .document("posts")
+                .collection("items")
+                .document(postId);
+        firestore.runTransaction(tx -> {
+            DocumentSnapshot snap = tx.get(bookmarkRef).get();
+            if (snap.exists()) {
+                tx.delete(bookmarkRef);
+            }
+            return null;
+        }).get();
     }
 
 

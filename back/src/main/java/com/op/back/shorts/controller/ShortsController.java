@@ -78,15 +78,6 @@ public class ShortsController {
         return ResponseEntity.ok().build();
     }
 
-    // 조회수 증가
-    @PostMapping("/{shortsId}/view")
-    public ResponseEntity<Void> view(@PathVariable String shortsId)
-            throws Exception {
-
-        shortsService.increaseViewCount(shortsId);
-        return ResponseEntity.ok().build();
-    }
-
     // 해시태그 검색
     @GetMapping("/search")
     public ResponseEntity<List<ShortsResponse>> search(

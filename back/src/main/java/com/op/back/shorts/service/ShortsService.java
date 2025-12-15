@@ -121,15 +121,13 @@ public class ShortsService {
         DocumentReference likeRef = sRef.collection("likes").document(uid);
 
         firestore.runTransaction(tx -> {
-            DocumentSnapshot snap = tx.get(likeRef).get();
+            DocumentSnapshot likeSnap = tx.get(likeRef).get();
+            DocumentSnapshot shortsSnap = tx.get(sRef).get();
 
-            if (!snap.exists()) {
+            if (!likeSnap.exists()) {
                 tx.set(likeRef, Map.of("likedAt", Timestamp.now()));
 
-                DocumentSnapshot sDoc = tx.get(sRef).get();
-                Long count = sDoc.getLong("likeCount");
-                if (count == null) count = 0L;
-
+                Long count = Optional.ofNullable(shortsSnap.getLong("likeCount")).orElse(0L);
                 tx.update(sRef, "likeCount", count + 1);
             }
             return null;
@@ -138,41 +136,32 @@ public class ShortsService {
 
     // 좋아요 취소
     public void unlikeShorts(String shortsId, String uid)
-            throws ExecutionException, InterruptedException {
-
+        throws ExecutionException, InterruptedException {
         DocumentReference sRef = firestore.collection(SHORTS).document(shortsId);
         DocumentReference likeRef = sRef.collection("likes").document(uid);
 
         firestore.runTransaction(tx -> {
+            DocumentSnapshot likeSnap = tx.get(likeRef).get();
+            DocumentSnapshot shortsSnap = tx.get(sRef).get();
 
-            DocumentSnapshot snap = tx.get(likeRef).get();
-            if (snap.exists()) {
+            if (likeSnap.exists()) {
+                Long count = Optional.ofNullable(shortsSnap.getLong("likeCount")).orElse(0L);
                 tx.delete(likeRef);
-
-                DocumentSnapshot sDoc = tx.get(sRef).get();
-                Long count = sDoc.getLong("likeCount");
-                if (count == null) count = 0L;
-
-                tx.update(sRef, "likeCount", Math.max(0, count - 1));
+                tx.update(sRef, "likeCount", Math.max(0L, count - 1));
             }
             return null;
         }).get();
     }
 
     // 조회수 증가
-    public void increaseViewCount(String shortsId)
-            throws ExecutionException, InterruptedException {
-
+    private void increaseViewCount(String shortsId)
+        throws ExecutionException, InterruptedException {
         DocumentReference sRef = firestore.collection(SHORTS).document(shortsId);
 
         firestore.runTransaction(tx -> {
-            DocumentSnapshot doc = tx.get(sRef).get();
-
-            Long vc = doc.getLong("viewCount");
-            if (vc == null) vc = 0L;
-
-            tx.update(sRef, "viewCount", vc + 1);
-
+            DocumentSnapshot snap = tx.get(sRef).get();
+            Long count = Optional.ofNullable(snap.getLong("viewCount")).orElse(0L);
+            tx.update(sRef, "viewCount", count + 1);
             return null;
         }).get();
     }
