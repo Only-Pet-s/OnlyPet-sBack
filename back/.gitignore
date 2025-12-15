@@ -33,3 +33,4 @@ build/
 .vscode/
 
 /src/main/resources/firebase/firebase_key.json
+/src/main/resources/application.properties
