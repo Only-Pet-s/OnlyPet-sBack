@@ -18,7 +18,7 @@ public class FirestoreDeleteUtil {
             throws ExecutionException, InterruptedException {
 
         // 1) 하위 컬렉션 조회
-        List<CollectionReference> subCollections = (List<CollectionReference>) docRef.listCollections();
+        Iterable<CollectionReference> subCollections = docRef.listCollections();
         for (CollectionReference colRef : subCollections) {
             deleteCollection(colRef, 50);
         }

@@ -4,6 +4,9 @@ import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
 import com.op.back.shorts.service.ShortsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,48 +17,85 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ShortsController {
 
-    private final ShortsService service;
+    private final ShortsService shortsService;
 
-    private String getUid() { return "TEST_UID"; }
+    //현재 인증된 사용자 Uid 가져오기
+    private String currentUid() {
+        return (String) SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getPrincipal();
+    }
 
-    @PostMapping
-    public String create(
+    // 쇼츠 생성
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> create(
             @RequestPart("data") ShortsCreateRequest request,
             @RequestPart("video") MultipartFile video
     ) throws Exception {
-        return service.createShorts(request, video, getUid());
+
+        return ResponseEntity.ok(
+                shortsService.createShorts(request, video, currentUid())
+        );
     }
 
+    // 쇼츠 단일 조회
     @GetMapping("/{shortsId}")
-    public ShortsResponse get(@PathVariable String shortsId) throws Exception {
-        return service.getShorts(shortsId, getUid());
+    public ResponseEntity<ShortsResponse> get(@PathVariable String shortsId)
+            throws Exception {
+
+        return ResponseEntity.ok(
+                shortsService.getShorts(shortsId, currentUid())
+        );
     }
 
+    // 최신 쇼츠 피드
     @GetMapping("/latest")
-    public List<ShortsResponse> latest(@RequestParam(defaultValue = "20") int limit) throws Exception {
-        return service.getLatestShorts(limit, getUid());
+    public ResponseEntity<List<ShortsResponse>> latest(
+            @RequestParam(defaultValue = "20") int limit
+    ) throws Exception {
+
+        return ResponseEntity.ok(
+                shortsService.getLatestShorts(limit, currentUid())
+        );
     }
 
+    // 좋아요
     @PostMapping("/{shortsId}/like")
-    public void like(@PathVariable String shortsId) throws Exception {
-        service.likeShorts(shortsId, getUid());
+    public ResponseEntity<Void> like(@PathVariable String shortsId)
+            throws Exception {
+
+        shortsService.likeShorts(shortsId, currentUid());
+        return ResponseEntity.ok().build();
     }
 
+    // 좋아요 취소
     @DeleteMapping("/{shortsId}/like")
-    public void unlike(@PathVariable String shortsId) throws Exception {
-        service.unlikeShorts(shortsId, getUid());
+    public ResponseEntity<Void> unlike(@PathVariable String shortsId)
+            throws Exception {
+
+        shortsService.unlikeShorts(shortsId, currentUid());
+        return ResponseEntity.ok().build();
     }
 
+    // 조회수 증가
     @PostMapping("/{shortsId}/view")
-    public void view(@PathVariable String shortsId) throws Exception {
-        service.increaseViewCount(shortsId);
+    public ResponseEntity<Void> view(@PathVariable String shortsId)
+            throws Exception {
+
+        shortsService.increaseViewCount(shortsId);
+        return ResponseEntity.ok().build();
     }
 
+    // 해시태그 검색
     @GetMapping("/search")
-    public List<ShortsResponse> search(
+    public ResponseEntity<List<ShortsResponse>> search(
             @RequestParam String tag,
             @RequestParam(defaultValue = "20") int limit
     ) throws Exception {
-        return service.searchByHashtag(tag, limit, getUid());
+
+        return ResponseEntity.ok(
+                shortsService.searchByHashtag(tag, limit, currentUid())
+        );
     }
 }

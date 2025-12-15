@@ -12,7 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.util.concurrent.TimeUnit;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
@@ -24,6 +26,7 @@ public class ShortsService {
 
     private final Firestore firestore;
     private final FirebaseStorageService storageService;
+    private final StringRedisTemplate redisTemplate;
 
     private static final String SHORTS = "shorts";
 
@@ -76,11 +79,13 @@ public class ShortsService {
         if (!doc.exists())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 
-        Shorts shorts = toShorts(doc);
+        handleViewCount(shortsId, currentUid);
+
+        Shorts s = toShorts(doc);
         boolean liked = isLiked(shortsId, currentUid);
         boolean bookmarked = isBookmarked(shortsId, currentUid);
 
-        return toResponse(shorts, liked, bookmarked);
+        return toResponse(s, liked, bookmarked, currentUid);
     }
 
     // 최신 쇼츠 피드 조회
@@ -100,9 +105,11 @@ public class ShortsService {
             Shorts s = toShorts(doc);
             boolean liked = isLiked(s.getId(), currentUid);
             boolean bookmarked = isBookmarked(s.getId(), currentUid);
-            result.add(toResponse(s, liked, bookmarked));
-        }
 
+            result.add(
+                    toResponse(s, liked, bookmarked, currentUid)
+            );
+        }
         return result;
     }
 
@@ -187,7 +194,7 @@ public class ShortsService {
             Shorts s = toShorts(doc);
             boolean liked = isLiked(s.getId(), currentUid);
             boolean bookmarked = isBookmarked(s.getId(), currentUid);
-            result.add(toResponse(s, liked, bookmarked));
+            result.add(toResponse(s, liked, bookmarked, currentUid));
         }
         return result;
     }
@@ -201,31 +208,44 @@ public class ShortsService {
                 .thumbnailUrl(doc.getString("thumbnailUrl"))
                 .description(doc.getString("description"))
                 .hashtags((List<String>) doc.get("hashtags"))
-                .likeCount(doc.getLong("likeCount"))
-                .commentCount(doc.getLong("commentCount"))
-                .viewCount(doc.getLong("viewCount"))
+
+                .likeCount(Optional.ofNullable(doc.getLong("likeCount")).orElse(0L))
+                .commentCount(Optional.ofNullable(doc.getLong("commentCount")).orElse(0L))
+                .viewCount(Optional.ofNullable(doc.getLong("viewCount")).orElse(0L))
+
                 .createdAt(doc.getTimestamp("createdAt"))
                 .build();
     }
 
-    private ShortsResponse toResponse(Shorts s, boolean liked, boolean bookmarked) {
-        Instant created = s.getCreatedAt() != null
-                ? Instant.ofEpochSecond(s.getCreatedAt().getSeconds(), s.getCreatedAt().getNanos())
+    private ShortsResponse toResponse( Shorts s,boolean liked,boolean bookmarked,
+        String currentUid) {
+        Instant createdAt = s.getCreatedAt() != null
+                ? Instant.ofEpochSecond(
+                        s.getCreatedAt().getSeconds(),
+                        s.getCreatedAt().getNanos()
+                )
                 : null;
 
         return ShortsResponse.builder()
                 .id(s.getId())
+
                 .uid(s.getUid())
+                .nickname(getNickname(s.getUid()))
+
                 .mediaUrl(s.getMediaUrl())
                 .thumbnailUrl(s.getThumbnailUrl())
                 .description(s.getDescription())
                 .hashtags(s.getHashtags())
+
                 .likeCount(s.getLikeCount())
                 .commentCount(s.getCommentCount())
                 .viewCount(s.getViewCount())
+
                 .liked(liked)
                 .bookmarked(bookmarked)
-                .createdAt(created)
+                .mine(s.getUid().equals(currentUid))
+
+                .createdAt(createdAt)
                 .build();
     }
 
@@ -259,5 +279,42 @@ public class ShortsService {
                 .get();
 
         return snap.exists();
+    }
+
+    // 닉네임 조회
+    private String getNickname(String uid) {
+        if (uid == null) return null;
+        try {
+            DocumentSnapshot userDoc = firestore
+                    .collection("users")
+                    .document(uid)
+                    .get()
+                    .get();
+            if (!userDoc.exists()) return null;
+            return userDoc.getString("nickname");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // 조회수 처리
+    private void handleViewCount(String shortsId, String uid)
+            throws ExecutionException, InterruptedException {
+
+        // 비로그인 유저는 제외 (원하면 허용 가능)
+        if (uid == null) return;
+
+        String key = "shorts:view:" + shortsId + ":" + uid;
+        Boolean exists = redisTemplate.hasKey(key);
+        if (Boolean.TRUE.equals(exists)) {
+            return; // 이미 조회 처리됨
+        }
+
+        // Redis 기록 (TTL 10분)
+        redisTemplate.opsForValue()
+                .set(key, "1", 10, TimeUnit.MINUTES);
+
+        // Firestore 조회수 증가
+        increaseViewCount(shortsId);
     }
 }

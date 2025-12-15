@@ -4,12 +4,12 @@ import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
 import com.op.back.post.service.PostService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -20,16 +20,25 @@ public class PostController {
 
     private final PostService postService;
 
+    //현재 인증된 사용자 Uid 가져오기
+    private String currentUid() {
+        return (String) SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getPrincipal();
+    }
+
 
     //게시글 작성
-    @PostMapping
-    public ResponseEntity<String> createPost(
-            @RequestPart(value="file", required = false) MultipartFile file,
-            @RequestPart("data") PostCreateRequest request
-    ) throws IOException, ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        String postId = postService.createPost(request, file, uid);
-        return ResponseEntity.status(HttpStatus.CREATED).body(postId);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PostResponse> createPost(
+            @RequestPart("data") PostCreateRequest request,
+            @RequestPart("media") MultipartFile media
+    ) throws Exception {
+
+        return ResponseEntity.ok(
+                postService.createPost(request, media, currentUid())
+        );
     }
 
     //최신 게시글 목록 조회
@@ -37,44 +46,46 @@ public class PostController {
     public ResponseEntity<List<PostResponse>> getLatestPosts(
             @RequestParam(defaultValue = "20") int limit
     ) throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        List<PostResponse> posts = postService.getLatestPosts(limit, uid);
-        return ResponseEntity.ok(posts);
+
+        return ResponseEntity.ok(
+                postService.getLatestPosts(limit, currentUid())
+        );
     }
 
     //게시글 상세 조회
     @GetMapping("/{postId}")
     public ResponseEntity<PostResponse> getPost(@PathVariable String postId)
             throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        PostResponse post = postService.getPost(postId, uid);
-        return ResponseEntity.ok(post);
+
+        return ResponseEntity.ok(
+                postService.getPost(postId, currentUid())
+        );
     }
 
     //게시글 삭제
     @DeleteMapping("/{postId}")
     public ResponseEntity<Void> deletePost(@PathVariable String postId)
-            throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        postService.deletePost(postId, uid);
-        return ResponseEntity.noContent().build();
+            throws Exception {
+
+        postService.deletePost(postId, currentUid());
+        return ResponseEntity.ok().build();
     }
 
     //좋아요 추가
     @PostMapping("/{postId}/like")
-    public ResponseEntity<Void> likePost(@PathVariable String postId)
-            throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        postService.likePost(postId, uid);
+    public ResponseEntity<Void> like(@PathVariable String postId)
+            throws Exception {
+
+        postService.likePost(postId, currentUid());
         return ResponseEntity.ok().build();
     }
 
     //좋아요 취소
     @DeleteMapping("/{postId}/like")
-    public ResponseEntity<Void> unlikePost(@PathVariable String postId)
-            throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        postService.unlikePost(postId, uid);
+    public ResponseEntity<Void> unlike(@PathVariable String postId)
+            throws Exception {
+
+        postService.unlikePost(postId, currentUid());
         return ResponseEntity.ok().build();
     }
 
@@ -82,8 +93,8 @@ public class PostController {
     @PostMapping("/{postId}/bookmark")
     public ResponseEntity<Void> bookmarkPost(@PathVariable String postId)
             throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        postService.bookmarkPost(postId, uid);
+
+        postService.bookmarkPost(postId, currentUid());
         return ResponseEntity.ok().build();
     }
 
@@ -91,8 +102,8 @@ public class PostController {
     @DeleteMapping("/{postId}/bookmark")
     public ResponseEntity<Void> unbookmarkPost(@PathVariable String postId)
             throws ExecutionException, InterruptedException {
-        String uid = getCurrentUid();
-        postService.unbookmarkPost(postId, uid);
+
+        postService.unbookmarkPost(postId, currentUid());
         return ResponseEntity.ok().build();
     }
 
@@ -103,20 +114,8 @@ public class PostController {
             @RequestParam(defaultValue = "20") int limit
     ) throws ExecutionException, InterruptedException {
 
-        String uid = getCurrentUid();
-        List<PostResponse> posts = postService.searchByHashtag(tag, limit, uid);
-        return ResponseEntity.ok(posts);
-    }
-
-
-    // **유틸** //
-    private String getCurrentUid() {
-        // TODO: 실제 구현
-        //  - JWT 필터에서 SecurityContext 에 넣어두었다면:
-        //    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        //    return (String) auth.getPrincipal();
-        //
-        // 지금은 테스트용으로 하드코딩 가능.
-        return "TEST_UID";
+        return ResponseEntity.ok(
+                postService.searchByHashtag(tag, limit, currentUid())
+        );
     }
 }

@@ -19,5 +19,6 @@ public class Post {
     private Boolean commentAvailable;
     private long likeCount;
     private long commentCount;
+    private long viewCount;
     private Timestamp createdAt;
 }

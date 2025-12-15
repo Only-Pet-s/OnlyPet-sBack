@@ -1,16 +1,17 @@
 package com.op.back.comment.service;
 
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.*;
 import com.op.back.comment.dto.CommentRequest;
 import com.op.back.comment.dto.CommentResponse;
+import com.op.back.common.service.FirestoreDeleteUtil;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,66 +19,71 @@ public class ShortsCommentService {
 
     private final Firestore firestore;
     private final CommentCoreService core;
+    private final FirestoreDeleteUtil deleteUtil;
 
-    public String create(String shortsId, String uid, CommentRequest req)
+
+    //댓글 생성
+    public CommentResponse create(String shortsId, String uid, CommentRequest req)
             throws Exception {
 
-        DocumentSnapshot doc = firestore.collection("shorts").document(shortsId).get().get();
+        DocumentReference ref = firestore.collection("shorts").document(shortsId);
 
-        if (!doc.exists())
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return firestore.runTransaction(tx -> {
+            DocumentSnapshot s = tx.get(ref).get();
 
-        boolean allow = doc.getBoolean("commentAvailable") != null
-                ? doc.getBoolean("commentAvailable")
-                : true;
+            if (!s.exists())
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 
-        incrementCommentCount(shortsId);
+            boolean allow = Boolean.TRUE.equals(s.getBoolean("commentAvailable"));
+            if (!allow)
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
-        return core.createComment("shorts", shortsId, uid, req, allow);
+            String commentId = core.createInternal(tx, "shorts", shortsId, uid, req);
+
+            Long cnt = Optional.ofNullable(s.getLong("commentCount")).orElse(0L);
+            tx.update(ref, "commentCount", cnt + 1);
+
+            return core.getOne("shorts", shortsId, commentId, uid);
+        }).get();
     }
 
+    //가져오기
     public List<CommentResponse> get(String shortsId, String uid) throws Exception {
-        return core.getComments("shorts", shortsId, uid);
+        return core.getTree("shorts", shortsId, uid);
     }
 
-    public void update(String shortsId, String commentId, String uid, CommentRequest req)
-            throws Exception {
-        core.updateComment("shorts", shortsId, commentId, uid, req);
+    //수정
+    public CommentResponse update(String shortsId, String commentId, 
+            String uid, CommentRequest req) throws Exception {
+        core.update("shorts", shortsId, commentId, uid, req);
+        return core.getOne("shorts", shortsId, commentId, uid);
     }
 
-    public void delete(String shortsId, String commentId, String uid)
-            throws Exception {
-        core.deleteComment("shorts", shortsId, commentId, uid);
-        decrementCommentCount(shortsId);
+    //삭제
+    public void delete(String shortsId, String commentId, String uid) throws Exception {
+
+        DocumentReference shortsRef =
+                firestore.collection("shorts").document(shortsId);
+        DocumentReference commentRef =
+                core.validateAndGetRef("shorts", shortsId, commentId, uid);
+
+        deleteUtil.deleteDocumentWithSubcollections(commentRef);
+
+        firestore.runTransaction(tx -> {
+            DocumentSnapshot s = tx.get(shortsRef).get();
+            Long cnt = Optional.ofNullable(s.getLong("commentCount")).orElse(0L);
+            tx.update(shortsRef, "commentCount", Math.max(0, cnt - 1));
+            return null;
+        }).get();
     }
 
+    // 댓글 좋아요
     public void like(String shortsId, String commentId, String uid) throws Exception {
-        core.likeComment("shorts", shortsId, commentId, uid);
+        core.like("shorts", shortsId, commentId, uid);
     }
 
+    // 댓글 좋아요 취소
     public void unlike(String shortsId, String commentId, String uid) throws Exception {
-        core.unlikeComment("shorts", shortsId, commentId, uid);
-    }
-
-    private void incrementCommentCount(String shortsId) throws Exception {
-        DocumentReference ref = firestore.collection("shorts").document(shortsId);
-        firestore.runTransaction(tx -> {
-            DocumentSnapshot doc = tx.get(ref).get();
-            Long c = doc.getLong("commentCount");
-            if (c == null) c = 0L;
-            tx.update(ref, "commentCount", c + 1);
-            return null;
-        }).get();
-    }
-
-    private void decrementCommentCount(String shortsId) throws Exception {
-        DocumentReference ref = firestore.collection("shorts").document(shortsId);
-        firestore.runTransaction(tx -> {
-            DocumentSnapshot doc = tx.get(ref).get();
-            Long c = doc.getLong("commentCount");
-            if (c == null) c = 0L;
-            tx.update(ref, "commentCount", Math.max(0, c - 1));
-            return null;
-        }).get();
+        core.unlike("shorts", shortsId, commentId, uid);
     }
 }
