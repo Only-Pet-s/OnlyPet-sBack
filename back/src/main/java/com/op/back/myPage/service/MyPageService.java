@@ -102,5 +102,18 @@ public class MyPageService {
         }
     }
 
+    public void updatePageVisible(String uid, String pageVisible) {
+        validateVisible(pageVisible);
+
+        firestore.collection("users").document(uid).update("pageVisible", pageVisible);
+    }
+
+    private void validateVisible(String pageVisible) {
+        if (!"PUBLIC".equals(pageVisible)
+                && !"FOLLOWER".equals(pageVisible)
+                && !"PRIVATE".equals(pageVisible)) {
+            throw new IllegalArgumentException("옳지 않은 마이 페이지 공개 상태");
+        }
+    }
 }
 

@@ -3,6 +3,8 @@ package com.op.back.myPage.controller;
 import com.op.back.auth.util.JwtUtil;
 import com.op.back.myPage.dto.MyPageDTO;
 import com.op.back.myPage.dto.MyPagePostDTO;
+import com.op.back.myPage.dto.PageVisibleDTO;
+import com.op.back.myPage.dto.PageVisibleRequestDTO;
 import com.op.back.myPage.service.MyPageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -42,5 +44,19 @@ public class MyPageController {
                 myPageService.getMyPosts(uid)
         );
     }
-}
 
+    // 공개 범위 변경, 로그인 uid == uid
+    @PatchMapping("/pageVisible")
+    public ResponseEntity<PageVisibleDTO> updatePageVisible(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody PageVisibleRequestDTO request
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+
+        myPageService.updatePageVisible(uid, request.getPageVisible());
+
+        return ResponseEntity.ok(
+                new PageVisibleDTO(request.getPageVisible())
+        );
+    }
+}
