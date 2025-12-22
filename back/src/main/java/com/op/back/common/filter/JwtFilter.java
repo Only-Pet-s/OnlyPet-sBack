@@ -1,6 +1,7 @@
 package com.op.back.common.filter;
 
 import com.op.back.auth.util.JwtUtil;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwt;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,8 +37,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 throw new RuntimeException("Invalid Token");
             }
 
-            String uid = jwtUtil.getUid(token);
-            String email = jwtUtil.getEmail(token);
+            Claims claims = jwtUtil.getClaims(token);
+            String uid = claims.getSubject();
+            String email = claims.get("email", String.class); // 없으면 null
 
             UsernamePasswordAuthenticationToken auth =
                     new  UsernamePasswordAuthenticationToken(uid,null, new ArrayList<>());
@@ -45,6 +47,8 @@ public class JwtFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(auth);
         }catch(Exception e){
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+//            filterChain.doFilter(request,response);
+
             return;
         }
 
