@@ -98,6 +98,8 @@ public class AuthService {
         data.put("captionTitle", dto.getCaptionTitle() != null ? dto.getCaptionTitle() : "");
         data.put("captionContent", dto.getCaptionContent() != null ? dto.getCaptionContent() : "");
 
+        data.put("pageVisible", dto.getPageVisible() != null ? dto.getPageVisible() : "PUBLIC"); // PUBLIC, FOLLOWER, PRIVATE
+
         ref.set(data).get();
 
         return uid;
