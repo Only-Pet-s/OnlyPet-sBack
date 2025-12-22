@@ -20,11 +20,11 @@ public class MyPageController {
     private final MyPageService myPageService;
     private final JwtUtil jwtUtil;
 
-    // 프로필 조회 (내 페이지 + 타인 페이지 공용)
+    // 프로필 조회 -> pageVisible이 PUBLIC인 경우만 조회를 할 수 있다.
     @GetMapping("/{uid}")
     public ResponseEntity<MyPageDTO> getProfile(
             @PathVariable String uid,
-            @RequestHeader(value = "Authorization", required = false) String authHeader
+            @RequestHeader("Authorization") String authHeader
     ) throws Exception {
 
         String loginUid = jwtUtil.getUidOrNull(authHeader);
