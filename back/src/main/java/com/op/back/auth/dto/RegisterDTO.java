@@ -21,6 +21,9 @@ public class RegisterDTO {
 
     private List<PetDTO> animals;
 
+    private String captionTitle;
+    private String captionContent;
+
     private int followerCount = 0;
     private int followingCount = 0;
     private int postCount = 0;

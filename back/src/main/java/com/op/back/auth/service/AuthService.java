@@ -95,6 +95,9 @@ public class AuthService {
         data.put("followingCount", 0);
         data.put("postCount", 0);
 
+        data.put("captionTitle", dto.getCaptionTitle() != null ? dto.getCaptionTitle() : "");
+        data.put("captionContent", dto.getCaptionContent() != null ? dto.getCaptionContent() : "");
+
         ref.set(data).get();
 
         return uid;
@@ -319,6 +322,29 @@ public class AuthService {
         if (!updates.isEmpty()) {
             ref.update(updates).get();
         }
+    }
+
+    public void updateCaption(String uid, Map<String, String> data) throws Exception {
+
+        DocumentReference ref = firestore.collection("users").document(uid);
+
+        Map<String, Object> updates = new HashMap<>();
+
+        if (data.containsKey("captionTitle")) {
+            String title = data.get("captionTitle");
+            updates.put("captionTitle", title != null ? title : "");
+        }
+
+        if (data.containsKey("captionContent")) {
+            String content = data.get("captionContent");
+            updates.put("captionContent", content != null ? content : "");
+        }
+
+        if (updates.isEmpty()) {
+            throw new RuntimeException("수정할 캡션 내용이 없습니다.");
+        }
+
+        ref.update(updates).get();
     }
 
     // firebase storage 업로드 메소드

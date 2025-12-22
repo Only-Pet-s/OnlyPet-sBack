@@ -162,17 +162,35 @@ public class AuthController {
             String token = authHeader.substring(7);
             String uid = jwtUtil.getUid(token);
 
-            Boolean sellerFlag = seller != null ? Boolean.parseBoolean(seller) : null;
-            Boolean instructorFlag = instructor != null ? Boolean.parseBoolean(instructor) : null;
-            Boolean petsitterFlag = petsitter != null ? Boolean.parseBoolean(petsitter) : null;
+            Boolean isSeller = seller != null ? Boolean.parseBoolean(seller) : null;
+            Boolean isInstructor = instructor != null ? Boolean.parseBoolean(instructor) : null;
+            Boolean isPetsitter = petsitter != null ? Boolean.parseBoolean(petsitter) : null;
 
-            authService.updateRole(uid, sellerFlag, instructorFlag, petsitterFlag, businessFile, certificateFile);
+            authService.updateRole(uid, isSeller, isInstructor, isPetsitter, businessFile, certificateFile);
 
             return ResponseEntity.ok(new ResponseDTO<>(true, "계정 수정 성공", null));
 
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new ResponseDTO<>(false, "계정 수정 실패: " + e.getMessage(), null));
+        }
+    }
+
+    // 캡션 수정 하기
+    @PatchMapping("/updateCaption")
+    public ResponseEntity<ResponseDTO<?>> updateCaption(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody Map<String, String> data
+    ){
+        try{
+            String uid = jwtUtil.getUid(authHeader.substring(7));
+
+            authService.updateCaption(uid, data);
+
+            return ResponseEntity.ok(new ResponseDTO<>(true, "캡션 수정 성공", null));
+        }catch(Exception e){
+            return ResponseEntity.badRequest()
+                    .body(new ResponseDTO<>(false, "캡션 수정 실패: " + e.getMessage(), null));
         }
     }
 }
