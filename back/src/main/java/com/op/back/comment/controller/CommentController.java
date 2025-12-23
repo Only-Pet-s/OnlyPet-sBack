@@ -2,6 +2,7 @@ package com.op.back.comment.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,9 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.op.back.comment.dto.CommentRequest;
 import com.op.back.comment.dto.CommentResponse;
+import com.op.back.comment.service.CommentFacadeService;
 import com.op.back.comment.service.PostCommentService;
 import com.op.back.comment.service.ShortsCommentService;
 
@@ -26,8 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CommentController {
 
-    private final PostCommentService postService;
-    private final ShortsCommentService shortsService;
+    private final CommentFacadeService commentFacadeService;
 
     private String currentUid() {
         return (String) SecurityContextHolder
@@ -42,16 +44,10 @@ public class CommentController {
             @RequestBody CommentRequest req
     ) throws Exception {
 
+        String uid = currentUid();
+
         return ResponseEntity.ok(
-                switch (req.getTargetType()) {
-                    case "POST" -> postService.create(
-                            req.getTargetId(), currentUid(), req
-                    );
-                    case "SHORTS" -> shortsService.create(
-                            req.getTargetId(), currentUid(), req
-                    );
-                    default -> throw new IllegalArgumentException("invalid targetType");
-                }
+            commentFacadeService.create(uid, req)
         );
     }
 
@@ -63,11 +59,7 @@ public class CommentController {
     ) throws Exception {
 
         return ResponseEntity.ok(
-                switch (targetType) {
-                    case "POST" -> postService.get(targetId, currentUid());
-                    case "SHORTS" -> shortsService.get(targetId, currentUid());
-                    default -> throw new IllegalArgumentException("invalid targetType");
-                }
+                commentFacadeService.get(targetType, targetId, currentUid())
         );
     }
 
@@ -79,15 +71,7 @@ public class CommentController {
     ) throws Exception {
 
         return ResponseEntity.ok(
-                switch (req.getTargetType()) {
-                    case "POST" -> postService.update(
-                            req.getTargetId(), commentId, currentUid(), req
-                    );
-                    case "SHORTS" -> shortsService.update(
-                            req.getTargetId(), commentId, currentUid(), req
-                    );
-                    default -> throw new IllegalArgumentException("invalid targetType");
-                }
+                commentFacadeService.update(commentId, currentUid(), req)
         );
     }
 
@@ -99,12 +83,7 @@ public class CommentController {
             @RequestParam String targetId
     ) throws Exception {
 
-        switch (targetType) {
-            case "POST" -> postService.delete(targetId, commentId, currentUid());
-            case "SHORTS" -> shortsService.delete(targetId, commentId, currentUid());
-            default -> throw new IllegalArgumentException("invalid targetType");
-        }
-
+        commentFacadeService.delete(commentId, targetType, targetId, currentUid());
         return ResponseEntity.ok().build();
     }
 
@@ -116,12 +95,7 @@ public class CommentController {
             @RequestParam String targetId
     ) throws Exception {
 
-        switch (targetType) {
-            case "POST" -> postService.like(targetId, commentId, currentUid());
-            case "SHORTS" -> shortsService.like(targetId, commentId, currentUid());
-            default -> throw new IllegalArgumentException("invalid targetType");
-        }
-
+        commentFacadeService.like(commentId, targetType, targetId, currentUid());
         return ResponseEntity.ok().build();
     }
 
@@ -133,12 +107,7 @@ public class CommentController {
             @RequestParam String targetId
     ) throws Exception {
 
-        switch (targetType) {
-            case "POST" -> postService.unlike(targetId, commentId, currentUid());
-            case "SHORTS" -> shortsService.unlike(targetId, commentId, currentUid());
-            default -> throw new IllegalArgumentException("invalid targetType");
-        }
-
+        commentFacadeService.unlike(commentId, targetType, targetId, currentUid());
         return ResponseEntity.ok().build();
     }
 }

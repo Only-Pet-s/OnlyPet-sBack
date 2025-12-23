@@ -9,19 +9,36 @@ import java.util.List;
 @Getter
 @Builder(toBuilder = true)
 public class CommentResponse {
+
     private String id;
     private String parentId;
 
-    private String uid;
-    private String nickname;
-
+    private Author author;
     private String content;
-    private long likeCount;
-    private boolean liked;
-    
-    private Instant createdAt;
-    private Instant updatedAt;
-    private boolean edited;
+    private Stats stats;
+    private Timestamps timestamps;
 
     private List<CommentResponse> children;
+
+    @Getter
+    @Builder
+    public static class Author {
+        private String uid;
+        private String nickname;
+    }
+
+    @Getter
+    @Builder
+    public static class Stats {
+        private long likeCount;
+        private boolean liked;
+    }
+
+    @Getter
+    @Builder
+    public static class Timestamps {
+        private Instant createdAt;
+        private Instant updatedAt;
+        private boolean edited;
+    }
 }

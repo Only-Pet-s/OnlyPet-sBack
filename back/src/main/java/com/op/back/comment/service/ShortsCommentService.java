@@ -25,26 +25,26 @@ public class ShortsCommentService {
     //댓글 생성
     public CommentResponse create(String shortsId, String uid, CommentRequest req)
             throws Exception {
-
         DocumentReference ref = firestore.collection("shorts").document(shortsId);
 
-        return firestore.runTransaction(tx -> {
+        //트랜잭션 : 생성 + 카운트 증가
+        String commentId = firestore.runTransaction(tx -> {
             DocumentSnapshot s = tx.get(ref).get();
-
             if (!s.exists())
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-            boolean allow = Boolean.TRUE.equals(s.getBoolean("commentAvailable"));
-            if (!allow)
+            if (!Boolean.TRUE.equals(s.getBoolean("commentAvailable")))
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-
-            String commentId = core.createInternal(tx, "shorts", shortsId, uid, req);
+            
+            String cid = core.createInternal(tx, "shorts", shortsId, uid, req);
 
             Long cnt = Optional.ofNullable(s.getLong("commentCount")).orElse(0L);
             tx.update(ref, "commentCount", cnt + 1);
 
-            return core.getOne("shorts", shortsId, commentId, uid);
+            return cid;
         }).get();
+
+        //트랜잭션 종료 후 조회
+        return core.getOne("shorts", shortsId, commentId, uid);
     }
 
     //가져오기

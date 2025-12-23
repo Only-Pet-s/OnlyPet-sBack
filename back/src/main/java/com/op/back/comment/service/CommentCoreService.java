@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.op.back.common.util.TimeUtil;
 
-import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -52,20 +52,13 @@ public class CommentCoreService {
     }
 
     // 댓글 수정
-    public void update(
-            String parentCol,
-            String parentId,
-            String commentId,
-            String uid,
-            CommentRequest req
-    ) throws Exception {
-
+    public void update(String parentCol,String parentId,String commentId,String uid,CommentRequest req) 
+            throws Exception {
         DocumentReference ref = commentRef(parentCol, parentId, commentId);
         DocumentSnapshot doc = ref.get().get();
 
         if (!doc.exists())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
         if (!uid.equals(doc.getString("uid")))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
@@ -79,9 +72,8 @@ public class CommentCoreService {
     }
 
     // 권한체크 & ref반환
-    public DocumentReference validateAndGetRef(String parentCol,String parentId,
-            String commentId,String uid) throws Exception {
-
+    public DocumentReference validateAndGetRef(String parentCol,String parentId,String commentId,String uid) 
+            throws Exception {
         DocumentReference ref = commentRef(parentCol, parentId, commentId);
         DocumentSnapshot doc = ref.get().get();
         if (!doc.exists())
@@ -95,19 +87,26 @@ public class CommentCoreService {
     // 댓글 좋아요
     public void like(String parentCol, String parentId, String commentId, String uid)
             throws Exception {
-
         DocumentReference cRef = commentRef(parentCol, parentId, commentId);
         DocumentReference lRef = cRef.collection("likes").document(uid);
 
         firestore.runTransaction(tx -> {
+            //모든 read 먼저
             DocumentSnapshot likeSnap = tx.get(lRef).get();
-            if (!likeSnap.exists()) {
-                tx.set(lRef, Map.of("likedAt", Timestamp.now()));
+            DocumentSnapshot cSnap = tx.get(cRef).get();
 
-                DocumentSnapshot cSnap = tx.get(cRef).get();
-                Long cnt = Optional.ofNullable(cSnap.getLong("likeCount")).orElse(0L);
+            //조건 판단
+            if (!likeSnap.exists()) {
+
+                Long cnt = Optional
+                        .ofNullable(cSnap.getLong("likeCount"))
+                        .orElse(0L);
+
+                //write는 그 다음
+                tx.set(lRef, Map.of("likedAt", Timestamp.now()));
                 tx.update(cRef, "likeCount", cnt + 1);
             }
+
             return null;
         }).get();
     }
@@ -120,14 +119,20 @@ public class CommentCoreService {
         DocumentReference lRef = cRef.collection("likes").document(uid);
 
         firestore.runTransaction(tx -> {
+            //read 먼저
             DocumentSnapshot likeSnap = tx.get(lRef).get();
-            if (likeSnap.exists()) {
-                tx.delete(lRef);
+            DocumentSnapshot cSnap = tx.get(cRef).get();
 
-                DocumentSnapshot cSnap = tx.get(cRef).get();
-                Long cnt = Optional.ofNullable(cSnap.getLong("likeCount")).orElse(0L);
+            if (likeSnap.exists()) {
+                Long cnt = Optional
+                        .ofNullable(cSnap.getLong("likeCount"))
+                        .orElse(0L);
+
+                //write
+                tx.delete(lRef);
                 tx.update(cRef, "likeCount", Math.max(0, cnt - 1));
             }
+
             return null;
         }).get();
     }
@@ -202,31 +207,32 @@ public class CommentCoreService {
     private CommentResponse toResponse(DocumentSnapshot doc, boolean liked) {
         Timestamp created = doc.getTimestamp("createdAt");
         Timestamp updated = doc.getTimestamp("updatedAt");
-
-        Instant createdAt = created != null
-                ? Instant.ofEpochSecond(created.getSeconds(), created.getNanos())
-                : null;
-
-        Instant updatedAt = updated != null
-                ? Instant.ofEpochSecond(updated.getSeconds(), updated.getNanos())
-                : null;
-
         return CommentResponse.builder()
                 .id(doc.getId())
                 .parentId(doc.getString("parentId"))
-
-                .uid(doc.getString("uid"))
-                .nickname(getNickname(doc.getString("uid")))
-
-                .content(doc.getString("content"))
-                .likeCount(
-                    Optional.ofNullable(doc.getLong("likeCount")).orElse(0L)
+                .author(
+                    CommentResponse.Author.builder()
+                        .uid(doc.getString("uid"))
+                        .nickname(getNickname(doc.getString("uid")))
+                        .build()
                 )
-                .liked(liked)
-                
-                .createdAt(createdAt)
-                .updatedAt(updatedAt)
-                .edited(Boolean.TRUE.equals(doc.getBoolean("edited")))
+                .content(doc.getString("content"))
+                .stats(
+                    CommentResponse.Stats.builder()
+                        .likeCount(
+                            Optional.ofNullable(doc.getLong("likeCount")).orElse(0L)
+                        )
+                        .liked(liked)
+                        .build()
+                )
+                .timestamps(
+                    CommentResponse.Timestamps.builder()
+                        .createdAt(TimeUtil.toInstant(created))
+                        .updatedAt(TimeUtil.toInstant(updated))
+                        .edited(Boolean.TRUE.equals(doc.getBoolean("edited")))
+                        .build()
+                )
+                .children(new ArrayList<>())
                 .build();
     }
 

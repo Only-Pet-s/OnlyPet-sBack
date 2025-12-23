@@ -11,7 +11,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 @Service
 @RequiredArgsConstructor
 public class PostCommentService {
@@ -24,26 +23,27 @@ public class PostCommentService {
     //댓글 생성
     public CommentResponse create(String postId, String uid, CommentRequest req)
             throws Exception {
-
         DocumentReference postRef = firestore.collection("posts").document(postId);
 
-        return firestore.runTransaction(tx -> {
+        //생성 담당 트랜잭션
+        String commentId = firestore.runTransaction(tx -> {
             DocumentSnapshot post = tx.get(postRef).get();
 
             if (!post.exists())
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-
-            boolean allow = Boolean.TRUE.equals(post.getBoolean("commentAvailable"));
-            if (!allow)
+            if (!Boolean.TRUE.equals(post.getBoolean("commentAvailable")))
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
-            String commentId = core.createInternal(tx, "posts", postId, uid, req);
+            String cid = core.createInternal(tx, "posts", postId, uid, req);
 
             Long cnt = Optional.ofNullable(post.getLong("commentCount")).orElse(0L);
             tx.update(postRef, "commentCount", cnt + 1);
 
-            return core.getOne("posts", postId, commentId, uid);
+            return cid;
         }).get();
+
+        //트랜잭션 종료 후 조회
+        return core.getOne("posts", postId, commentId, uid);
     }
 
     //가져오기
@@ -51,8 +51,7 @@ public class PostCommentService {
         return core.getTree("posts", postId, uid);
     }
 
-
-
+    //업데이트
     public CommentResponse update(String postId, String commentId, 
             String uid, CommentRequest req) throws Exception {
         core.update("posts", postId, commentId, uid, req);
@@ -61,14 +60,11 @@ public class PostCommentService {
 
 
     public void delete(String postId, String commentId, String uid) throws Exception {
-
         DocumentReference postRef =
                 firestore.collection("posts").document(postId);
-
         //권한체크 및 ref반환
         DocumentReference commentRef =
                 core.validateAndGetRef("posts", postId, commentId, uid);
-
         //댓글 + 하위 컬렉션 삭제
         deleteUtil.deleteDocumentWithSubcollections(commentRef);
 

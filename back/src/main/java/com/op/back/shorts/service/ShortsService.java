@@ -188,6 +188,50 @@ public class ShortsService {
         return result;
     }
 
+    //북마크 추가
+    public void bookmarkShorts(String shortsId, String uid) throws ExecutionException, InterruptedException {
+        DocumentReference bookmarkRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("bookmarks")
+                .document("shorts")
+                .collection("items")
+                .document(shortsId);
+
+        firestore.runTransaction(tx -> {
+            DocumentSnapshot snap = tx.get(bookmarkRef).get();
+            if (!snap.exists()) {
+                tx.set(bookmarkRef, Map.of(
+                        "shortsId", shortsId,
+                        "bookmarkedAt", Timestamp.now()
+                ));
+            }
+            return null;
+        }).get();
+    }
+
+    //북마크 제거
+    public void unbookmarkShorts(String shortsId, String uid)
+            throws ExecutionException, InterruptedException {
+
+        DocumentReference bookmarkRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("bookmarks")
+                .document("shorts")
+                .collection("items")
+                .document(shortsId);
+
+        firestore.runTransaction(tx -> {
+            DocumentSnapshot snap = tx.get(bookmarkRef).get();
+            if (snap.exists()) {
+                tx.delete(bookmarkRef);
+            }
+            return null;
+        }).get();
+    }
+
+
     // **내부 유틸** //
     private Shorts toShorts(DocumentSnapshot doc) {
         return Shorts.builder()
