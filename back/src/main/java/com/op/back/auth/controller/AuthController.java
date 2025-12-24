@@ -85,6 +85,31 @@ public class AuthController {
         }
     }
 
+    //현재 비밀번호 타당성 검사
+    @PostMapping("/pwValidation")
+    public ResponseEntity<ResponseDTO<?>> pwValidation(
+            @RequestBody Map<String, String> data,
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        try{
+            String token = authHeader.substring(7);
+            String email = jwtUtil.getEmail(token);
+            String pw = data.get("password");
+
+            if(!authService.pwValidation(email,pw)){
+                return ResponseEntity.ok(
+                        new ResponseDTO<>(true, "현재 비밀번호와 일치하지 않음", null)
+                );
+            }
+            return ResponseEntity.ok(
+                    new ResponseDTO<>(true, "현재 비밀번호와 일치함", null)
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new ResponseDTO<>(false, "현재 비밀번호와 일치하지 않음", null)
+            );
+        }
+    }
     // 비밀번호 변경하기
     @PostMapping("/changePw")
     public ResponseEntity<ResponseDTO<?>> changePw(
