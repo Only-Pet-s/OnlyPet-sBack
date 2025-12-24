@@ -17,6 +17,7 @@ import com.op.back.auth.dto.PetDTO;
 import com.op.back.auth.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -402,4 +403,25 @@ public class AuthService {
         }
     }
 
+    public void deleteUser(String uid) throws Exception{
+
+        DocumentReference ref = firestore.collection("users").document(uid);
+        DocumentSnapshot snapshot = ref.get().get();
+
+        if(!snapshot.exists()){
+            throw new RuntimeException("사용자 정보가 존재하지 않습니다.");
+        }
+
+        String pUrl = snapshot.getString("profileImageUrl");
+        deleteFromStorage(pUrl);
+
+        String cUrl = snapshot.getString("certificateUrl");
+        deleteFromStorage(cUrl);
+
+        ref.delete().get();
+
+        firebaseAuth.deleteUser(uid);
+
+        refreshTokenService.deleteRefreshToken(uid);
+    }
 }
