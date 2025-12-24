@@ -9,12 +9,10 @@ import com.google.firebase.cloud.StorageClient;
 
 import com.op.back.auth.dto.LoginDTO;
 import com.op.back.auth.dto.RegisterDTO;
-import com.op.back.auth.dto.PetDTO;
 
 import com.op.back.auth.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -143,7 +141,7 @@ public class AuthService {
         String rToken = jwtUtil.createRefreshToken(uid); // RT
 
         long refreshTTL = 1000L * 60 * 60 * 24 * 30;
-        refreshTokenService. saveRefreshToken(uid, rToken, refreshTTL);
+        refreshTokenService.saveRefreshToken(uid, rToken, refreshTTL);
 
         Map<String, Object> result = new HashMap<>();
         result.put("uid", uid);
@@ -460,5 +458,23 @@ public class AuthService {
         firebaseAuth.deleteUser(uid);
 
         refreshTokenService.deleteRefreshToken(uid);
+    }
+
+    public boolean pwValidation(String email, String pw) {
+        // 먼저 이전 비밀번호 검증 절차
+        String url = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + firebaseKey;
+
+        RestTemplate rest = new RestTemplate();
+        Map<String, Object> request1 = new HashMap<>();
+        request1.put("email", email);
+        request1.put("password", pw);
+        request1.put("returnSecureToken", true);
+
+        ResponseEntity<Map> response1 = rest.postForEntity(url, request1, Map.class);
+
+        if(response1.getStatusCode().is2xxSuccessful()){
+            return true;
+        }
+        return false;
     }
 }
