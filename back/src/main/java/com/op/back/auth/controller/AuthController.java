@@ -111,6 +111,24 @@ public class AuthController {
         }
     }
 
+    @DeleteMapping("/delete")
+    public ResponseEntity<ResponseDTO<?>> deleteUser(
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        try {
+            String token = authHeader.substring(7);
+            String uid = jwtUtil.getUid(token);
+
+            authService.deleteUser(uid);
+
+            return ResponseEntity.ok(new ResponseDTO<>(true, "회원 탈퇴 완료", null));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseDTO<>(false, "회원 탈퇴 실패: " + e.getMessage(), null));
+        }
+    }
+
     @PatchMapping("/updateInfo")
     public ResponseEntity<ResponseDTO<?>> update(@RequestBody Map<String, Object> data, @RequestHeader("Authorization") String header){
         try{
