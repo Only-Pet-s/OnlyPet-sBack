@@ -1,12 +1,9 @@
 package com.op.back.auth.service;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.WriteResult;
+import com.google.cloud.firestore.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserRecord;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.DocumentReference;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.cloud.StorageClient;
 
@@ -417,6 +414,46 @@ public class AuthService {
 
         String cUrl = snapshot.getString("certificateUrl");
         deleteFromStorage(cUrl);
+        String bcUrl = snapshot.getString("businessCertificateUrl");
+        deleteFromStorage(bcUrl);
+        String icUrl = snapshot.getString("instructorCertificateUrl");
+        deleteFromStorage(icUrl);
+        String pcUrl = snapshot.getString("petsitterCertificateUrl");
+        deleteFromStorage(pcUrl);
+
+        // 내가 팔로잉한 사람의 followers에서 나 삭제
+        CollectionReference myFollowing = ref.collection("following");
+        List<QueryDocumentSnapshot> followingDocs = myFollowing.get().get().getDocuments();
+
+        for (QueryDocumentSnapshot doc : followingDocs) {
+            String targetUid = doc.getId();  // 내가 팔로잉한 사람 uid
+            firestore.collection("users")
+                    .document(targetUid)
+                    .collection("followers")
+                    .document(uid)
+                    .delete();
+        }
+
+        // 나를 팔로우하는 사람의 following에서 나 삭제
+        CollectionReference myFollowers = ref.collection("followers");
+        List<QueryDocumentSnapshot> followerDocs = myFollowers.get().get().getDocuments();
+
+        for (QueryDocumentSnapshot doc : followerDocs) {
+            String targetUid = doc.getId();  // 나를 팔로우한 사람 uid
+            firestore.collection("users")
+                    .document(targetUid)
+                    .collection("following")
+                    .document(uid)
+                    .delete();
+        }
+
+        // 내 followers/following subcollection 삭제
+        for (QueryDocumentSnapshot doc : followingDocs) {
+            myFollowing.document(doc.getId()).delete();
+        }
+        for (QueryDocumentSnapshot doc : followerDocs) {
+            myFollowers.document(doc.getId()).delete();
+        }
 
         ref.delete().get();
 
