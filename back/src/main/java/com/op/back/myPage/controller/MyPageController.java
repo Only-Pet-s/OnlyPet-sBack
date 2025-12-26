@@ -2,10 +2,7 @@ package com.op.back.myPage.controller;
 
 import com.op.back.auth.dto.ResponseDTO;
 import com.op.back.auth.util.JwtUtil;
-import com.op.back.myPage.dto.MyPageDTO;
-import com.op.back.myPage.dto.MyPagePostDTO;
-import com.op.back.myPage.dto.PageVisibleDTO;
-import com.op.back.myPage.dto.PageVisibleRequestDTO;
+import com.op.back.myPage.dto.*;
 import com.op.back.myPage.service.MyPageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +43,16 @@ public class MyPageController {
 
         return ResponseEntity.ok(
                 myPageService.getMyPosts(uid)
+        );
+    }
+
+    // 숏츠 목록 조회
+    @GetMapping("{uid}/shorts")
+    public ResponseEntity<List<MyPageShortDTO>> getMyShorts(
+            @PathVariable String uid
+    )throws Exception {
+        return ResponseEntity.ok(
+                myPageService.getMyShorts(uid)
         );
     }
 
