@@ -1,6 +1,7 @@
 package com.op.back.follow.controller;
 
 import com.op.back.auth.util.JwtUtil;
+import com.op.back.follow.dto.FollowCheckDTO;
 import com.op.back.follow.dto.FollowUserDTO;
 import com.op.back.follow.service.FollowService;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,17 @@ public class FollowController {
     @GetMapping("/following/{uid}")
     public ResponseEntity<List<FollowUserDTO>> following(@PathVariable String uid) {
         return ResponseEntity.ok(followService.getFollowing(uid));
+    }
+
+    // 팔로우 여부 체크
+    @GetMapping("check/{targetUid}")
+    public ResponseEntity<FollowCheckDTO> checkFollow(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String targetUid
+    ){
+        String loginUid = jwtUtil.getUid(authHeader.substring(7));
+        boolean isFollowing = followService.isFollowing(loginUid, targetUid);
+        return ResponseEntity.ok(new FollowCheckDTO(isFollowing));
     }
 }
 

@@ -98,6 +98,21 @@ public class FollowService {
         return getFollowList(uid, "following");
     }
 
+    public boolean isFollowing(String myUid, String targetUid) {
+        try{
+            DocumentSnapshot snapshot = firestore
+                    .collection("users")
+                    .document(myUid)
+                    .collection("following")
+                    .document(targetUid)
+                    .get()
+                    .get();
+
+            return snapshot.exists();
+        }catch (Exception e){
+            throw new RuntimeException("팔로우 여부 확인 실패",e);
+        }
+    }
     // 공통 조회
     private List<FollowUserDTO> getFollowList(String uid, String type) {
         try {
