@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.google.cloud.Timestamp;
 import com.op.back.auth.model.AuthUser;
 import com.op.back.auth.model.User;
 import com.op.back.lecture.dto.LectureCreateRequest;
@@ -79,7 +80,7 @@ public class LectureServiceImpl implements LectureService {
         lecture.setPublished(true);
 
 
-        lecture.setCreatedAt(Instant.now());
+        lecture.setCreatedAt(Timestamp.now());
 
         lectureRepository.save(lecture);
 
@@ -144,7 +145,7 @@ public class LectureServiceImpl implements LectureService {
                 lecture.getTags(),
                 lecture.getRating(),
                 lecture.getReviewCount(),
-                lecture.getCreatedAt()
+                lecture.getCreatedAt().toDate().toInstant()
         );
     }
 

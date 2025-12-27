@@ -47,9 +47,21 @@ public class LectureRepositoryImpl implements LectureRepository {
 
     @Override
     public List<Lecture> findAllPublishedApproved(int limit, int offset) {
-        // 지금은 빈 구현 or TODO로 둬도 됨
-        //TODO: published == true && adminApproved == true 조건으로 조회
-        return List.of();
+        try {
+            return firestore.collection("lectures")
+                .whereEqualTo("adminApproved", true)
+                .whereEqualTo("published", true)
+                .offset(offset)
+                .limit(limit)
+                .get()
+                .get()
+                .getDocuments()
+                .stream()
+                .map(doc -> doc.toObject(Lecture.class))
+                .toList();
+        }catch(Exception e) {
+            throw new RuntimeException("강의 목록 조회 실패", e);
+        }
     }
 
     @Override

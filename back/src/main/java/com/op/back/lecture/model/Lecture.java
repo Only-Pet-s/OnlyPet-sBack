@@ -1,14 +1,14 @@
 package com.op.back.lecture.model;
 
 import lombok.Data;
-import java.time.Instant;
 import java.util.List;
+import com.google.cloud.Timestamp;
 
 @Data
 public class Lecture {
 
     // Theme 정보
-    private String lectureId;          //themeId
+    private String lectureId;          // == themeId
     private String title;
     private String description;
     private String category;
@@ -24,12 +24,12 @@ public class Lecture {
     private boolean adminApproved;
     private boolean published;
 
-    // 집계
+    //  집계
     private int videoCount;
     private double rating;
     private int reviewCount;
 
     private String thumbnailUrl;
 
-    private Instant createdAt;
+    private Timestamp createdAt;
 }

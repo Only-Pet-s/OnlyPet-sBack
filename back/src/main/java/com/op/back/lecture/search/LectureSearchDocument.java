@@ -1,8 +1,6 @@
 package com.op.back.lecture.search;
 
 import java.util.List;
-
-import org.springframework.data.annotation.Id;
 import lombok.Data;
 
 @Data
