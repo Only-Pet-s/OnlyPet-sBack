@@ -1,5 +1,4 @@
 package com.op.back.lecture.service;
-
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -195,7 +194,7 @@ public class LectureServiceImpl implements LectureService {
     * 영상 강의 업로드 
     */
     @Override
-    public void uploadVideo(String lectureId,MultipartFile video,String title,
+    public void uploadVideo(String lectureId,MultipartFile video,String title, String description,
             int order,boolean preview,String currentUid) {
         // 강의 테마 존재 확인
         Lecture lecture = lectureRepository.findById(lectureId)
@@ -230,10 +229,11 @@ public class LectureServiceImpl implements LectureService {
         lectureVideo.setVideoId(videoId);
         lectureVideo.setLectureId(lectureId);
         lectureVideo.setTitle(title);
+        lectureVideo.setDescription(description);
         lectureVideo.setOrder(order);
         lectureVideo.setVideoUrl(videoUrl);
         lectureVideo.setPreview(preview);
-        lectureVideo.setCreatedAt(Instant.now());
+        lectureVideo.setCreatedAt(Timestamp.now());
 
         lectureRepository.saveVideo(lectureId, lectureVideo);
 
@@ -270,7 +270,7 @@ public class LectureServiceImpl implements LectureService {
                         v.isPreview(),
                         purchased || v.isPreview(), // 미리보기는 구매 없이 가능
                         v.isDeleted(),
-                        v.getCreatedAt()
+                        v.getCreatedAt().toDate().toInstant()
                 ))
                 .toList();
     }

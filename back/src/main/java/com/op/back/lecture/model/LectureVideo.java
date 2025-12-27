@@ -1,7 +1,8 @@
 package com.op.back.lecture.model;
 
 import lombok.Data;
-import java.time.Instant;
+
+import com.google.cloud.Timestamp;
 
 @Data
 public class LectureVideo {
@@ -17,7 +18,8 @@ public class LectureVideo {
     private int duration;           // 초 단위
 
     private boolean preview;
-    private Instant createdAt;
+    private String thumbnailUrl;
+    private Timestamp createdAt;
 
     private boolean purchased;
     private boolean deleted;

@@ -36,11 +36,12 @@ public class LectureController {
             @PathVariable String lectureId,
             @RequestParam("video") MultipartFile video,
             @RequestParam String title,
+            @RequestParam String description,
             @RequestParam int order,
             @RequestParam(defaultValue = "false") boolean preview
     ) {
         lectureService.uploadVideo(
-                lectureId, video, title, order, preview, currentUid()
+                lectureId, video, title, description, order, preview, currentUid()
         );
     }
 
