@@ -1,15 +1,20 @@
 package com.op.back.common.config;
 
-import org.springframework.boot.persistence.autoconfigure.EntityScan;
+import org.apache.http.HttpHost;
+import org.elasticsearch.client.RestClient;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.rest_client.RestClientTransport;
 
 @Configuration
-@EnableElasticsearchRepositories(
-        basePackages = "com.op.back.lecture.search"
-)
-@EntityScan(basePackages = {
-        "com.op.back.lecture.search" //ES Document만 있는 패키지
-})
 public class ElasticsearchConfig {
+        @Bean
+        public ElasticsearchClient elasticsearchClient() {
+                RestClient restClient = RestClient.builder(new HttpHost("localhost", 9200)).build();
+                ElasticsearchTransport transport =new RestClientTransport(restClient,new JacksonJsonpMapper());
+                return new ElasticsearchClient(transport);
+        }
 }

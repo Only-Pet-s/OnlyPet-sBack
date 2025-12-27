@@ -18,7 +18,8 @@ import com.op.back.lecture.model.LectureVideo;
 import com.op.back.lecture.repository.LectureRepository;
 import com.op.back.lecture.repository.UserRepository;
 import com.op.back.lecture.search.LectureSearchDocument;
-import com.op.back.lecture.search.LectureSearchRepository;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -28,15 +29,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class LectureServiceImpl implements LectureService {
     private final LectureRepository lectureRepository;
-    private final LectureSearchRepository lectureSearchRepository;
     private final UserRepository userRepository;
     private final LectureSearchService lectureSearchService;
+    private final ElasticsearchClient elasticsearchClient;
     private final S3Client s3Client;
     private final String bucketName = "onlypets-lecture-video";
 
@@ -81,7 +83,7 @@ public class LectureServiceImpl implements LectureService {
 
         lectureRepository.save(lecture);
 
-        //Elasticsearch 저장
+
         LectureSearchDocument doc = new LectureSearchDocument();
         doc.setLectureId(lecture.getLectureId());
         doc.setTitle(lecture.getTitle());
@@ -90,13 +92,21 @@ public class LectureServiceImpl implements LectureService {
         doc.setCategory(lecture.getCategory());
         doc.setLecturerUid(currentUid);
         doc.setLecturerName(user.getNickname());
-        //// TODO: 관리자 승인 후 true로 변경
         doc.setAdminApproved(true);
         doc.setPublished(true);
         doc.setRating(0.0);
         doc.setPrice(lecture.getPrice());
-
-        lectureSearchRepository.save(doc);
+        //Elasticsearch 저장
+        try{
+                elasticsearchClient.index(i -> i
+                        .index("lecture-index")
+                        .id(doc.getLectureId())
+                        .document(doc)
+                );
+        } catch(Exception e){
+                // Firestore는 성공했으므로 검색만 잠시 안 될 수 있음
+                log.error("Elasticsearch indexing failed", e);
+                }
 
         return lecture.getLectureId();
     }

@@ -147,8 +147,9 @@
 
         <!--Elastic Search-->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+            <version>8.13.4</version>
         </dependency>
         
         <!-- AWS S3 -->

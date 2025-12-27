@@ -3,14 +3,10 @@ package com.op.back.lecture.search;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.elasticsearch.annotations.Document;
-
 import lombok.Data;
 
-@Document(indexName = "lecture-index",createIndex = false)
 @Data
 public class LectureSearchDocument {
-    @Id
     private String lectureId;
     private String title;
     private String description;
