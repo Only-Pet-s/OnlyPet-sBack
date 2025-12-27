@@ -107,15 +107,10 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
-    //해시태그 검색
+    //검색 [엘라스틱]
     @GetMapping("/search")
-    public ResponseEntity<List<PostResponse>> searchByHashtag(
-            @RequestParam String tag,
-            @RequestParam(defaultValue = "20") int limit
-    ) throws ExecutionException, InterruptedException {
-
-        return ResponseEntity.ok(
-                postService.searchByHashtag(tag, limit, currentUid())
-        );
+    public List<PostResponse> search(@RequestParam String q) {
+        return postService.search(q);
     }
+    
 }

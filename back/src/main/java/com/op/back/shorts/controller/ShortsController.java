@@ -89,13 +89,9 @@ public class ShortsController {
                 return ResponseEntity.ok().build();
         }
 
-        // 해시태그 검색
+        //태그 검색
         @GetMapping("/search")
-        public ResponseEntity<List<ShortsResponse>> search(
-                        @RequestParam String tag,
-                        @RequestParam(defaultValue = "20") int limit) throws Exception {
-
-                return ResponseEntity.ok(
-                                shortsService.searchByHashtag(tag, limit, currentUid()));
+        public List<ShortsResponse> search(@RequestParam String q) {
+                return shortsService.search(q);
         }
 }

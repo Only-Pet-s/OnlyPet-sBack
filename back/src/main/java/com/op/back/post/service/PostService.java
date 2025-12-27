@@ -10,6 +10,8 @@ import com.op.back.common.service.FirebaseStorageService;
 import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
 import com.op.back.post.model.Post;
+import com.op.back.post.search.PostDocument;
+import com.op.back.post.search.PostSearchRepository;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -27,13 +29,11 @@ import java.util.concurrent.TimeUnit;
 public class PostService {
     private final Firestore firestore;
     private final FirebaseStorageService storageService;
-
     private final PostCleanupService cleanupService;
-
     //RedisTemplate
     private final StringRedisTemplate redisTemplate;
-
     private static final String POSTS_COLLECTION = "posts";
+    private final PostSearchRepository postSearchRepository;
 
     //게시글 생성
     public PostResponse createPost(PostCreateRequest request,MultipartFile mediaFile,
@@ -41,7 +41,6 @@ public class PostService {
             throws IOException, ExecutionException, InterruptedException {
 
         String postId = UUID.randomUUID().toString();
-
         String mediaUrl = storageService.uploadFile(
                 mediaFile,
                 "posts/" + uid + "/" + postId
@@ -65,6 +64,22 @@ public class PostService {
                 .document(postId)
                 .set(data)
                 .get();
+
+        postSearchRepository.save(
+            PostDocument.builder()
+                    .id(postId)
+                    .uid(uid)
+                    .content(request.getContent())
+                    .hashtags(
+                            Optional.ofNullable(request.getHashtags())
+                                    .orElse(List.of())
+                    )
+                    .mediaType(request.getMediaType())
+                    .likeCount(0)
+                    .commentCount(0)
+                    .createdAt(Instant.now())
+                    .build()
+    );
 
         // 생성 직후 상세조회해서 Response 반환
         return getPost(postId, uid);
@@ -264,6 +279,15 @@ public class PostService {
         return result;
     }
 
+    /*
+        엘라스틱 서치 기반 검색 
+    */
+    public List<PostResponse> search(String q) {
+        return postSearchRepository.search(q).stream()
+                .map(this::toSearchResponse)
+                .toList();
+    }
+
     //조회수 증가
     private void increaseViewCount(String postId)
             throws ExecutionException, InterruptedException {
@@ -292,7 +316,7 @@ public class PostService {
                 .commentAvailable(doc.getBoolean("commentAvailable"))
                 .likeCount(Optional.ofNullable(doc.getLong("likeCount")).orElse(0L))
                 .commentCount(Optional.ofNullable(doc.getLong("commentCount")).orElse(0L))
-                .viewCount(Optional.ofNullable(doc.getLong("viewCount")).orElse(0L)) // ✅
+                .viewCount(Optional.ofNullable(doc.getLong("viewCount")).orElse(0L))
                 .createdAt(doc.getTimestamp("createdAt"))
                 .build();
     }
@@ -336,6 +360,30 @@ public class PostService {
                 .bookmarked(bookmarked)
                 .mine(post.getUid().equals(currentUid))
                 .createdAt(toInstant(post.getCreatedAt()))
+                .build();
+    }
+
+    /**
+     * Elasticsearch 검색 결과 → PostResponse 변환
+     * (Firestore 조회 안 함, 검색 전용)
+     */
+    private PostResponse toSearchResponse(
+            com.op.back.post.search.PostDocument doc
+    ) {
+        return PostResponse.builder()
+                .id(doc.getId())
+                .uid(doc.getUid())
+                .nickname(getNickname(doc.getUid())) // 기존 로직 재사용
+                .content(doc.getContent())
+                .mediaType(doc.getMediaType())
+                .hashtags(doc.getHashtags())
+                .likeCount(doc.getLikeCount())
+                .commentCount(doc.getCommentCount())
+                .viewCount(0L)
+                .liked(false)
+                .bookmarked(false)
+                .mine(false)
+                .createdAt(doc.getCreatedAt())
                 .build();
     }
 

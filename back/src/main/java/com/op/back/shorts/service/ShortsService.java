@@ -7,6 +7,8 @@ import com.op.back.common.service.FirebaseStorageService;
 import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
 import com.op.back.shorts.model.Shorts;
+import com.op.back.shorts.search.ShortsSearchRepository;
+import com.op.back.shorts.search.ShortsDocument;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class ShortsService {
     private final StringRedisTemplate redisTemplate;
 
     private static final String SHORTS = "shorts";
+    private final ShortsSearchRepository shortsSearchRepository;
 
     // 쇼츠 생성
     public String createShorts(ShortsCreateRequest request,
@@ -64,6 +67,20 @@ public class ShortsService {
                 .set(data)
                 .get();
 
+        shortsSearchRepository.save(
+                ShortsDocument.builder()
+                        .id(shortsId)
+                        .uid(uid)
+                        .description(request.getDescription())
+                        .hashtags(
+                                request.getHashtags() != null
+                                        ? request.getHashtags()
+                                        : List.of()
+                        )
+                        .viewCount(0)
+                        .createdAt(Instant.now())
+                        .build()
+        );
         return shortsId;
     }
 
@@ -231,6 +248,15 @@ public class ShortsService {
         }).get();
     }
 
+    /*
+        엘라스틱 서치 기반 검색
+    */
+    public List<ShortsResponse> search(String q) {
+        return shortsSearchRepository.search(q).stream()
+                .map(this::toSearchResponse)
+                .toList();
+    }
+
 
     // **내부 유틸** //
     private Shorts toShorts(DocumentSnapshot doc) {
@@ -279,6 +305,35 @@ public class ShortsService {
                 .mine(s.getUid().equals(currentUid))
 
                 .createdAt(createdAt)
+                .build();
+    }
+
+    /**
+     * Elasticsearch 검색 결과 → ShortsResponse 변환
+     * (Firestore 재조회 X, 검색 전용)
+     */
+    private ShortsResponse toSearchResponse(ShortsDocument doc) {
+        return ShortsResponse.builder()
+                .id(doc.getId())
+                .uid(doc.getUid())
+                .nickname(getNickname(doc.getUid()))
+
+                // 검색 리스트에서는 영상 URL/썸네일만 있으면 충분
+                .mediaUrl(null)
+                .thumbnailUrl(null)
+
+                .description(doc.getDescription())
+                .hashtags(doc.getHashtags())
+
+                .likeCount(0L)
+                .commentCount(0L)
+                .viewCount(doc.getViewCount())
+
+                .liked(false)
+                .bookmarked(false)
+                .mine(false)
+
+                .createdAt(doc.getCreatedAt())
                 .build();
     }
 

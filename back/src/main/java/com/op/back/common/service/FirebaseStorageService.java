@@ -1,28 +1,37 @@
 package com.op.back.common.service;
 
-import com.google.firebase.cloud.StorageClient;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Bucket;
+
+import com.google.firebase.cloud.StorageClient;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URLEncoder;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class FirebaseStorageService {
 
     //Storage파일 업로드 후, public URL 반환
     public String uploadFile(MultipartFile file, String path) throws IOException {
-        if (file == null || file.isEmpty()) return null;
 
         Bucket bucket = StorageClient.getInstance().bucket();
-        String fileName = path + "/" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        String bucketName = bucket.getName();
 
-        bucket.create(fileName, file.getBytes(), file.getContentType());
+        Blob blob = bucket.create(
+                path,
+                file.getInputStream(),
+                file.getContentType()
+        );
 
+        // 브라우저에서 바로 열리는 Firebase download URL
         return String.format(
-                "https://storage.googleapis.com/%s/%s",
-                bucket.getName(),
-                fileName
+                "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media",
+                bucketName,
+                URLEncoder.encode(path, StandardCharsets.UTF_8)
         );
     }
 
