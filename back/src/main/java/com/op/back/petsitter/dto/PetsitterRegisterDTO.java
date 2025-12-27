@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PetsitterRegisterDTO {
     private String petsitterId;
+    private String name;
     private String address;
     private double lat;
     private double lng;

@@ -11,9 +11,10 @@ public class PetsitterEntity {
     private String name;
     private String profileImageUrl;
 
-    private String region;
+    private String address;
     private double lat;
     private double lng;
+    private double distance;
 
     private double rating;
     private double mannerTemp;

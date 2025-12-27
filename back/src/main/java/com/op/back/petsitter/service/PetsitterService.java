@@ -5,6 +5,7 @@ import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.op.back.petsitter.dto.PetsitterCardDTO;
 import com.op.back.petsitter.dto.PetsitterRegisterDTO;
+import com.op.back.petsitter.dto.TmapDTO;
 import com.op.back.petsitter.entity.PetsitterEntity;
 import com.op.back.petsitter.repository.PetsitterRepository;
 import com.op.back.petsitter.util.DistanceUtil;
@@ -19,11 +20,12 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class PetsitterService {
 
+    private final TmapService tmapService;
     private final PetsitterRepository petsitterRepository;
     private final Firestore firestore;
 
     public List<PetsitterCardDTO> getPetsitters(
-            String region,
+            String Address,
             String petType,
             Integer minPrice,
             Integer maxPrice,
@@ -36,7 +38,7 @@ public class PetsitterService {
 
         List<PetsitterEntity> petsitters =
                 petsitterRepository.findPetsitters(
-                        region, petType, reserveAvailable, verified
+                        Address, petType, reserveAvailable, verified
                 );
 
         return petsitters.stream()
@@ -49,9 +51,9 @@ public class PetsitterService {
                 .toList();
     }
 
-    public void registerPetsitterInfo(
+    public void registerPetsitter(
             String uid,
-            PetsitterRegisterDTO resister
+            PetsitterRegisterDTO register
     ) {
         DocumentReference userRef =
                 firestore.collection("users").document(uid);
@@ -76,25 +78,32 @@ public class PetsitterService {
             throw new IllegalStateException("펫시터 권한이 없는 사용자입니다.");
         }
 
+        TmapDTO tmapDTO = null;
+        try {
+            tmapDTO = tmapService.convertAddressToLatLng(register.getAddress());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
         // 3. 펫시터 정보 저장
         PetsitterRegisterDTO petsitter = new PetsitterRegisterDTO(
                 uid,
-                resister.getAddress(),
-                resister.getLat(),
-                resister.getLng(),
-                resister.getCaption(),
-                resister.getCareer(),
-                resister.getPrice(),
-                resister.isDog(),
-                resister.isCat(),
-                resister.isEtc()
+                register.getName(),
+                register.getAddress(),
+                tmapDTO.getLat(),
+                tmapDTO.getLng(),
+                register.getCaption(),
+                register.getCareer(),
+                register.getPrice(),
+                register.isDog(),
+                register.isCat(),
+                register.isEtc()
         );
 
         firestore.collection("petsitters")
                 .document(uid)
                 .set(petsitter);
     }
-
 
     private boolean filterPrice(PetsitterEntity p, Integer min, Integer max) {
         if (min != null && p.getPrice() < min) return false;
@@ -113,7 +122,7 @@ public class PetsitterService {
                 p.getPetsitterId(),
                 p.getName(),
                 p.getProfileImageUrl(),
-                p.getRegion(),
+                p.getAddress(),
                 distance,
                 p.getRating(),
                 p.getMannerTemp(),

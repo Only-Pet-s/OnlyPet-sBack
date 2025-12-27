@@ -43,7 +43,7 @@ public class PetsitterController {
             @RequestBody PetsitterRegisterDTO request
     ) {
         String uid = jwtUtil.getUid(authHeader.substring(7));
-        petsitterService.registerPetsitterInfo(uid, request);
+        petsitterService.registerPetsitter(uid, request);
         return ResponseEntity.ok().build();
     }
 

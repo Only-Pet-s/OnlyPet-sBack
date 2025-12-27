@@ -15,15 +15,15 @@ public class PetsitterRepository {
     private final Firestore firestore;
 
     public List<PetsitterEntity> findPetsitters(
-            String region,
+            String address,
             String petType,
             Boolean reserveAvailable,
             Boolean verified
     ) {
         Query query = firestore.collection("petsitters");
 
-        if (region != null) {
-            query = query.whereEqualTo("region", region);
+        if (address != null) {
+            query = query.whereEqualTo("address", address);
         }
 
         if (reserveAvailable != null) {
