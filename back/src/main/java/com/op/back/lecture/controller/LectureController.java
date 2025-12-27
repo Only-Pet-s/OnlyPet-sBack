@@ -21,10 +21,24 @@ public class LectureController {
         return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
-    // 1) 강의 등록 (강의자만 가능: 서비스에서 체크)
+    // 1) 강의 테마 등록 (강의자만 가능: 서비스에서 체크)
     @PostMapping
     public String create(@RequestBody LectureCreateRequest request) {
         return lectureService.createLecture(request, currentUid());
+    }
+
+    
+    @PostMapping("/{lectureId}/videos")
+    public void uploadVideo(
+            @PathVariable String lectureId,
+            @RequestParam("video") MultipartFile video,
+            @RequestParam String title,
+            @RequestParam int order,
+            @RequestParam(defaultValue = "false") boolean preview
+    ) {
+        lectureService.uploadVideo(
+                lectureId, video, title, order, preview, currentUid()
+        );
     }
 
     // 2) 강의 전체 목록

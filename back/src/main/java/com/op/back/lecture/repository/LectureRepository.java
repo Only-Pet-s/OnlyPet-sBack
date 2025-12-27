@@ -10,4 +10,6 @@ public interface LectureRepository {
     Optional<Lecture> findById(String lectureId);
     List<Lecture> findAllPublishedApproved(int limit, int offset);
     List<Lecture> findByLecturerUidPublishedApproved(String uid, int limit, int offset);
+    void saveVideo(String lectureId, LectureVideo video);
+    void incrementVideoCount(String lectureId);
 }

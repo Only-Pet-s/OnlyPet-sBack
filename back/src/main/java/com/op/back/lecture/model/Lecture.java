@@ -1,31 +1,35 @@
 package com.op.back.lecture.model;
 
+import lombok.Data;
 import java.time.Instant;
 import java.util.List;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
+@Data
 public class Lecture {
-    private String lectureId;
+
+    // Theme 정보
+    private String lectureId;          //themeId
     private String title;
     private String description;
     private String category;
-    private int price;
-    private String thumbnailUrl;
+    private List<String> tags;
 
+    private int price;
+
+    // 강의자
     private String lecturerUid;
     private String lecturerName;
 
+    // 상태
     private boolean adminApproved;
     private boolean published;
 
-    private List<String> tags;
-
+    // 집계
+    private int videoCount;
     private double rating;
     private int reviewCount;
+
+    private String thumbnailUrl;
 
     private Instant createdAt;
 }

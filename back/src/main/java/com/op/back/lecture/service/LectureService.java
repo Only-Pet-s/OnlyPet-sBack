@@ -12,4 +12,5 @@ public interface LectureService {
     LectureDetailResponse getLecture(String lectureId);
     List<LectureListItemResponse> getLecturesByLecturer(String lecturerUid, int limit, int offset);
     List<LectureListItemResponse> searchLectures(String keyword,List<String> tags,String category,int limit,int offset);
+    void uploadVideo(String lectureId,MultipartFile video,String title,int order,boolean preview,String currentUid);
 }

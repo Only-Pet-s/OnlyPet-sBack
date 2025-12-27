@@ -30,6 +30,7 @@ public class LectureServiceImpl implements LectureService {
 
 
 
+    //강의 테마 생성
     @Override
     public String createLecture(LectureCreateRequest req, String currentUid) {
 
@@ -50,14 +51,20 @@ public class LectureServiceImpl implements LectureService {
         lecture.setTitle(req.title());
         lecture.setDescription(req.description());
         lecture.setCategory(req.category());
-        lecture.setPrice(req.price());
         lecture.setTags(req.tags());
+        lecture.setPrice(req.price());
 
         lecture.setLecturerUid(currentUid);
         lecture.setLecturerName(user.getNickname()); //DB 기준
 
-        lecture.setAdminApproved(true);
+        lecture.setVideoCount(0);         //강의 테마 카운트
+        lecture.setRating(0.0);
+        lecture.setReviewCount(0);
+
+        lecture.setAdminApproved(true);   // TODO: 관리자 승인 플로우 붙일 예정
         lecture.setPublished(true);
+
+
         lecture.setCreatedAt(Instant.now());
 
         lectureRepository.save(lecture);
@@ -74,7 +81,7 @@ public class LectureServiceImpl implements LectureService {
         //// TODO: 관리자 승인 후 true로 변경
         doc.setAdminApproved(true);
         doc.setPublished(true);
-        doc.setRating(lecture.getRating());
+        doc.setRating(0.0);
         doc.setPrice(lecture.getPrice());
 
         lectureSearchRepository.save(doc);
@@ -83,7 +90,7 @@ public class LectureServiceImpl implements LectureService {
     }
 
      /**
-     * 강의 목록 조회 (기본)
+     * 강의 테마 목록 조회 (기본)
      */
     @Override
     public List<LectureListItemResponse> getLectures(int limit, int offset) {
@@ -159,5 +166,49 @@ public class LectureServiceImpl implements LectureService {
                 .filter(l -> l != null)
                 .map(this::toListItem)
                 .toList();
+    }
+
+    //S3 영상 강의 업로드
+    @Override
+    public void uploadVideo(String lectureId,MultipartFile video,String title,
+            int order,boolean preview,String currentUid) {
+        // 강의 테마 존재 확인
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
+
+        // 강의자 본인 확인
+        if (!lecture.getLecturerUid().equals(currentUid)) {
+            throw new IllegalStateException("본인 강의만 업로드 가능");
+        }
+
+        // S3 업로드
+        String videoId = UUID.randomUUID().toString();
+        String key = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + ".mp4";
+
+        s3Client.putObject(
+                PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(video.getContentType())
+                        .build(),
+                RequestBody.fromBytes(video.getBytes())
+        );
+
+        String videoUrl = "https://" + bucketName + ".s3.amazonaws.com/" + key;
+
+        // Firestore에 영상 메타데이터 저장
+        LectureVideo lectureVideo = new LectureVideo();
+        lectureVideo.setVideoId(videoId);
+        lectureVideo.setLectureId(lectureId);
+        lectureVideo.setTitle(title);
+        lectureVideo.setOrder(order);
+        lectureVideo.setVideoUrl(videoUrl);
+        lectureVideo.setPreview(preview);
+        lectureVideo.setCreatedAt(Instant.now());
+
+        lectureRepository.saveVideo(lectureId, lectureVideo);
+
+        // videoCount +1
+        lectureRepository.incrementVideoCount(lectureId);
     }
 }
