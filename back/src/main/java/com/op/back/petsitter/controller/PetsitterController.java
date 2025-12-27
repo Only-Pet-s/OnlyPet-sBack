@@ -28,8 +28,8 @@ public class PetsitterController {
             @RequestParam(required = false) Boolean reserveAvailable,
             @RequestParam(required = false) Boolean verified,
             @RequestParam(required = false) String sort,
-            @RequestParam(required = false) Double lat,
-            @RequestParam(required = false) Double lng
+            @RequestParam Double lat,
+            @RequestParam Double lng
     ) {
         return ResponseEntity.ok(
                 petsitterService.getPetsitters(

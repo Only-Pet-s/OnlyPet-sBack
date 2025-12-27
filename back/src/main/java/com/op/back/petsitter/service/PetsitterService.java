@@ -89,7 +89,8 @@ public class PetsitterService {
         // 3. 펫시터 정보 저장
         PetsitterRegisterDTO petsitter = new PetsitterRegisterDTO(
                 uid,
-                register.getName(),
+                user.getString("name"),
+                user.getString("profileImageUrl"),
                 register.getAddress(),
                 tmapDTO.getLat(),
                 tmapDTO.getLng(),
@@ -113,7 +114,9 @@ public class PetsitterService {
     }
 
     private PetsitterCardDTO toDTO(PetsitterEntity p, Double lat, Double lng) {
+
         double distance = 0.0;
+
         if (lat != null && lng != null) {
             distance = DistanceUtil.calculate(lat, lng, p.getLat(), p.getLng());
             distance = Math.round(distance * 10) / 10.0;
