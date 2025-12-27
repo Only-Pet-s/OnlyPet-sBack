@@ -2,17 +2,14 @@ package com.op.back.petsitter.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
-// db 저장용 dto
+// 사용자 요청 용 dto
 @Getter
 @AllArgsConstructor
-public class PetsitterRegisterDTO {
+public class PetsitterRegisterRequestDTO {
     private String petsitterId;
     private String name;
     private String address;
-    private double lat;
-    private double lng;
 
     private String caption;  // 소개글
 

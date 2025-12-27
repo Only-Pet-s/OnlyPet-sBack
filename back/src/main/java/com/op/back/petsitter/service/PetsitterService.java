@@ -5,6 +5,7 @@ import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.op.back.petsitter.dto.PetsitterCardDTO;
 import com.op.back.petsitter.dto.PetsitterRegisterDTO;
+import com.op.back.petsitter.dto.PetsitterRegisterRequestDTO;
 import com.op.back.petsitter.dto.TmapDTO;
 import com.op.back.petsitter.entity.PetsitterEntity;
 import com.op.back.petsitter.repository.PetsitterRepository;
@@ -53,7 +54,7 @@ public class PetsitterService {
 
     public void registerPetsitter(
             String uid,
-            PetsitterRegisterDTO register
+            PetsitterRegisterRequestDTO register
     ) {
         DocumentReference userRef =
                 firestore.collection("users").document(uid);

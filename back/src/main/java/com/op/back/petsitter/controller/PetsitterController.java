@@ -3,6 +3,7 @@ package com.op.back.petsitter.controller;
 import com.op.back.auth.util.JwtUtil;
 import com.op.back.petsitter.dto.PetsitterCardDTO;
 import com.op.back.petsitter.dto.PetsitterRegisterDTO;
+import com.op.back.petsitter.dto.PetsitterRegisterRequestDTO;
 import com.op.back.petsitter.service.PetsitterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +41,7 @@ public class PetsitterController {
     @PostMapping("/register")
     public ResponseEntity<Void> registerPetsitter(
             @RequestHeader("Authorization") String authHeader,
-            @RequestBody PetsitterRegisterDTO request
+            @RequestBody PetsitterRegisterRequestDTO request
     ) {
         String uid = jwtUtil.getUid(authHeader.substring(7));
         petsitterService.registerPetsitter(uid, request);
