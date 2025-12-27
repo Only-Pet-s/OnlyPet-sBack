@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class PetsitterCardDTO {
-    private String petSitterId; // 펫 시터 아이디
+    private String petsitterId; // 펫 시터 아이디
     private String name; // 펫 시터 이름
     private String profileImageUrl; // 펫 시터 프로필 사진
 
@@ -25,7 +25,7 @@ public class PetsitterCardDTO {
     private int price; // 가격
 
     private boolean reserveAvailable; // 예약 가능 여부
-    private boolean isDog; // 강아지 가능 여부
-    private boolean isCat; // 고양이 가능 여부
-    private boolean isETC; // 기타 동물
+    private boolean dog; // 강아지 가능 여부
+    private boolean cat; // 고양이 가능 여부
+    private boolean etc; // 기타 동물
 }
