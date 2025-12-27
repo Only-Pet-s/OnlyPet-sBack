@@ -23,13 +23,14 @@ public class LectureController {
         return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
-    // 1) 강의 테마 등록 (강의자만 가능: 서비스에서 체크)
+    //강의 테마 등록 (강의자만 가능: 서비스에서 체크)
     @PostMapping
     public String create(@RequestBody LectureCreateRequest request) {
         return lectureService.createLecture(request, currentUid());
     }
 
 
+    //강의 동영상 업로드
     @PostMapping("/{lectureId}/videos")
     public void uploadVideo(
             @PathVariable String lectureId,
@@ -43,7 +44,7 @@ public class LectureController {
         );
     }
 
-    // 2) 강의 전체 목록
+    //강의 전체 목록 (OFFSET증가하면 다음 페이지 볼 수 있음 0/20/40등올 조절)
     @GetMapping
     public List<LectureListItemResponse> list(
             @RequestParam(defaultValue = "20") int limit,
@@ -52,13 +53,13 @@ public class LectureController {
         return lectureService.getLectures(limit, offset);
     }
 
-    // 3) 강의 상세
+    // 강의 상세 조회
     @GetMapping("/{lectureId}")
     public LectureDetailResponse detail(@PathVariable String lectureId) {
         return lectureService.getLecture(lectureId);
     }
 
-    // 4) 특정 강의자 강의 목록
+    // 특정 강의자 강의 목록 조회
     @GetMapping("/by-lecturer/{lecturerUid}")
     public List<LectureListItemResponse> byLecturer(
             @PathVariable String lecturerUid,
@@ -68,7 +69,7 @@ public class LectureController {
         return lectureService.getLecturesByLecturer(lecturerUid, limit, offset);
     }
 
-    //강의 동영상 불러오기
+    //특정 강의 동영상 목록 불러오기
     @GetMapping("/{lectureId}/videos")
     public List<LectureVideoResponse> getLectureVideos(
             @PathVariable String lectureId) {

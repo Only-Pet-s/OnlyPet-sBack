@@ -3,6 +3,7 @@ package com.op.back.lecture.dto;
 import java.util.List;
 import java.time.Instant;
 
+//강의 상세조회
 public record LectureDetailResponse (
     String lectureId,
     String title,

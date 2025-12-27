@@ -2,6 +2,7 @@ package com.op.back.lecture.dto;
 
 import java.util.List;
 
+//강의 테마 목록 조회
 public record LectureListItemResponse(
     String lectureId,
     String title,
