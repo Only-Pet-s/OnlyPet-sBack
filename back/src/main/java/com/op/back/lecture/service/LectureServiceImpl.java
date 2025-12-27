@@ -1,5 +1,6 @@
 package com.op.back.lecture.service;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -11,11 +12,20 @@ import com.op.back.auth.model.User;
 import com.op.back.lecture.dto.LectureCreateRequest;
 import com.op.back.lecture.dto.LectureDetailResponse;
 import com.op.back.lecture.dto.LectureListItemResponse;
+import com.op.back.lecture.dto.LectureVideoResponse;
 import com.op.back.lecture.model.Lecture;
+import com.op.back.lecture.model.LectureVideo;
 import com.op.back.lecture.repository.LectureRepository;
 import com.op.back.lecture.repository.UserRepository;
 import com.op.back.lecture.search.LectureSearchDocument;
 import com.op.back.lecture.search.LectureSearchRepository;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.core.sync.RequestBody;
+import org.springframework.web.multipart.MultipartFile;
+
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +37,8 @@ public class LectureServiceImpl implements LectureService {
     private final LectureSearchRepository lectureSearchRepository;
     private final UserRepository userRepository;
     private final LectureSearchService lectureSearchService;
+    private final S3Client s3Client;
+    private final String bucketName = "onlypets-lecture-video";
 
 
 
@@ -168,7 +180,9 @@ public class LectureServiceImpl implements LectureService {
                 .toList();
     }
 
-    //S3 영상 강의 업로드
+    /* 
+    * 영상 강의 업로드 
+    */
     @Override
     public void uploadVideo(String lectureId,MultipartFile video,String title,
             int order,boolean preview,String currentUid) {
@@ -185,14 +199,18 @@ public class LectureServiceImpl implements LectureService {
         String videoId = UUID.randomUUID().toString();
         String key = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + ".mp4";
 
-        s3Client.putObject(
-                PutObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(key)
-                        .contentType(video.getContentType())
-                        .build(),
-                RequestBody.fromBytes(video.getBytes())
-        );
+        try {
+                s3Client.putObject(
+                        PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(key)
+                                .contentType(video.getContentType())
+                                .build(),
+                        RequestBody.fromBytes(video.getBytes())
+                );
+        } catch (AwsServiceException | SdkClientException | IOException e) {
+                e.printStackTrace();
+        }
 
         String videoUrl = "https://" + bucketName + ".s3.amazonaws.com/" + key;
 
@@ -210,5 +228,39 @@ public class LectureServiceImpl implements LectureService {
 
         // videoCount +1
         lectureRepository.incrementVideoCount(lectureId);
+    }
+
+    /*
+     * 강의 동영상 조회
+    */
+    @Override
+    public List<LectureVideoResponse> getLectureVideos(String lectureId, String currentUid) {
+
+        // 1. 강의 존재 확인
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new IllegalArgumentException("강의 없음"));
+
+        // 2. 영상 목록 조회
+        List<LectureVideo> videos =
+                lectureRepository.findVideosByLectureId(lectureId);
+
+        // 3. 구매 여부 판단 (지금은 간단히)
+        boolean purchased = lecture.getLecturerUid().equals(currentUid)
+                || lecture.getPrice() == 0;
+
+        return videos.stream()
+                .filter(v -> !v.isDeleted()) // 삭제된 영상 숨김
+                .map(v -> new LectureVideoResponse(
+                        v.getVideoId(),
+                        v.getTitle(),
+                        v.getDescription(),
+                        v.getOrder(),
+                        v.getVideoUrl(),
+                        v.isPreview(),
+                        purchased || v.isPreview(), // 미리보기는 구매 없이 가능
+                        v.isDeleted(),
+                        v.getCreatedAt()
+                ))
+                .toList();
     }
 }

@@ -7,6 +7,8 @@ import com.op.back.lecture.service.LectureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import com.op.back.lecture.dto.LectureVideoResponse;
 
 import java.util.List;
 
@@ -27,7 +29,7 @@ public class LectureController {
         return lectureService.createLecture(request, currentUid());
     }
 
-    
+
     @PostMapping("/{lectureId}/videos")
     public void uploadVideo(
             @PathVariable String lectureId,
@@ -64,6 +66,19 @@ public class LectureController {
             @RequestParam(defaultValue = "0") int offset
     ) {
         return lectureService.getLecturesByLecturer(lecturerUid, limit, offset);
+    }
+
+    //강의 동영상 불러오기
+    @GetMapping("/{lectureId}/videos")
+    public List<LectureVideoResponse> getLectureVideos(
+            @PathVariable String lectureId) {
+
+        String currentUid =
+                (String) SecurityContextHolder.getContext()
+                        .getAuthentication()
+                        .getPrincipal();
+
+        return lectureService.getLectureVideos(lectureId, currentUid);
     }
 
     //검색

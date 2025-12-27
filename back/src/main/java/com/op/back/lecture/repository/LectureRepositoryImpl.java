@@ -2,12 +2,15 @@ package com.op.back.lecture.repository;
 
 import com.google.cloud.firestore.FieldValue;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.op.back.lecture.model.Lecture;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import com.op.back.lecture.model.LectureVideo;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 
 @Repository
 @RequiredArgsConstructor
@@ -17,10 +20,14 @@ public class LectureRepositoryImpl implements LectureRepository {
 
     @Override
     public void save(Lecture lecture) {
-        firestore.collection("lectures")
-                .document(lecture.getLectureId())
-                .set(lecture)
-                .get();
+        try {
+            firestore.collection("lectures")
+                    .document(lecture.getLectureId())
+                    .set(lecture)
+                    .get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -49,6 +56,24 @@ public class LectureRepositoryImpl implements LectureRepository {
     public List<Lecture> findByLecturerUidPublishedApproved(
             String uid, int limit, int offset) {
         return List.of();
+    }
+
+    @Override
+    public List<LectureVideo> findVideosByLectureId(String lectureId) {
+        try {
+            return firestore.collection("lectures")
+                    .document(lectureId)
+                    .collection("videos")
+                    .orderBy("order")
+                    .get()
+                    .get()
+                    .getDocuments()
+                    .stream()
+                    .map((QueryDocumentSnapshot doc) -> doc.toObject(LectureVideo.class))
+                    .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("영상 목록 조회 실패", e);
+        }
     }
 
 

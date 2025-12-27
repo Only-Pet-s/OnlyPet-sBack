@@ -18,4 +18,7 @@ public class LectureVideo {
 
     private boolean preview;
     private Instant createdAt;
+
+    private boolean purchased;
+    private boolean deleted;
 }
