@@ -62,4 +62,13 @@ public class JwtUtil {
     public String getUid(String token){
         return getClaims(token).getSubject();
     }
+
+    public String getUidOrNull(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        String token = authHeader.substring(7);
+        return getUid(token);
+    }
+
 }
