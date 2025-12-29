@@ -6,6 +6,7 @@ import com.google.cloud.storage.Bucket;
 import com.google.firebase.cloud.StorageClient;
 import com.op.back.myPage.dto.MyPageDTO;
 import com.op.back.myPage.dto.MyPagePostDTO;
+import com.op.back.myPage.dto.MyPageShortDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -70,6 +71,16 @@ public class MyPageService {
                 .stream()
                 .map(MyPagePostDTO::from)
                 .toList();
+    }
+
+    public List<MyPageShortDTO> getMyShorts(String uid) throws Exception {
+        QuerySnapshot snapshot = firestore.collection("shorts")
+                .whereEqualTo("uid", uid)
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .limit(12)
+                .get()
+                .get();
+        return snapshot.getDocuments().stream().map(MyPageShortDTO::from).toList();
     }
 
     public void updateRole(
