@@ -1,10 +1,7 @@
 package com.op.back.petsitter.controller;
 
 import com.op.back.auth.util.JwtUtil;
-import com.op.back.petsitter.dto.PetsitterCardDTO;
-import com.op.back.petsitter.dto.PetsitterRegisterDTO;
-import com.op.back.petsitter.dto.PetsitterRegisterRequestDTO;
-import com.op.back.petsitter.dto.PetsitterUpdateRequestDTO;
+import com.op.back.petsitter.dto.*;
 import com.op.back.petsitter.service.PetsitterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +37,7 @@ public class PetsitterController {
         );
     }
 
+    // 펫시터 개별정보 조회
     @GetMapping("/{petsitterId}")
     public ResponseEntity<PetsitterCardDTO> getPetsitter(
             @PathVariable String petsitterId,
@@ -51,6 +49,7 @@ public class PetsitterController {
         );
     }
 
+    // 펫시터 정보 등록
     @PostMapping("/register")
     public ResponseEntity<Void> registerPetsitter(
             @RequestHeader("Authorization") String authHeader,
@@ -61,6 +60,27 @@ public class PetsitterController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/operatingTime/{petsitterId}")
+    public ResponseEntity<OperatingTimeResponseDTO> getOperatingTime(
+            @PathVariable String petsitterId
+    ){
+        return ResponseEntity.ok(
+                petsitterService.getOperatingTime(petsitterId)
+        );
+    }
+
+    // 펫시터 운영 시간 등록 또는 업데이트
+    @PatchMapping("/operatingTime")
+    public ResponseEntity<Void> updateOperatingTime(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody OperatingTimeUpdateRequestDTO request
+    ) {
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        petsitterService.updateOperatingTime(uid, request.getOperatingTime());
+        return ResponseEntity.ok().build();
+    }
+
+    // 펫시터 정보 수정
     @PatchMapping("/update")
     public ResponseEntity<List<PetsitterUpdateRequestDTO>> updatePetsitters(
             @RequestHeader("Authorization") String authHeader,

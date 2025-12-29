@@ -150,6 +150,7 @@ public class PetsitterService {
                 p.getPetsitterId(),
                 p.getName(),
                 p.getProfileImageUrl(),
+                p.getPhone(),
                 p.getAddress(),
                 distance,
                 p.getRating(),
@@ -217,6 +218,85 @@ public class PetsitterService {
         petSitterRef.update(updates);
     }
 
+    // 운영 시간 변경
+    public void updateOperatingTime(
+            String petsitterId,
+            Map<String, PetsitterOperateTimeDTO> operatingTime
+    ) {
+
+        Map<String, Object> saveMap = new HashMap<>();
+
+        for (Map.Entry<String, PetsitterOperateTimeDTO> entry
+                : operatingTime.entrySet()) {
+
+            String day = entry.getKey();
+            PetsitterOperateTimeDTO dto = entry.getValue();
+
+            if (dto == null) {
+                saveMap.put(day, null);
+                continue;
+            }
+
+            saveMap.put(day, Map.of(
+                    "start", dto.getStart(),
+                    "end", dto.getEnd()
+            ));
+        }
+
+        firestore.collection("petsitters")
+                .document(petsitterId)
+                .update("operatingTime", saveMap);
+    }
+
+
+    // 운영 시간 조회
+    public OperatingTimeResponseDTO getOperatingTime(String petsitterId) {
+
+        DocumentSnapshot snapshot = null;
+        try {
+            snapshot = firestore.collection("petsitters")
+                    .document(petsitterId)
+                    .get().get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (!snapshot.exists()) {
+            throw new IllegalStateException("펫시터가 존재하지 않습니다.");
+        }
+
+        Map<String, Object> raw =
+                (Map<String, Object>) snapshot.get("operatingTime");
+
+        Map<String, PetsitterOperateTimeDTO> result = new HashMap<>();
+
+        if (raw != null) {
+            for (Map.Entry<String, Object> entry : raw.entrySet()) {
+
+                String day = entry.getKey();
+                Object value = entry.getValue();
+
+                if (value == null) {
+                    result.put(day, null);
+                    continue;
+                }
+
+                Map<String, Object> timeMap = (Map<String, Object>) value;
+
+                result.put(
+                        day,
+                        new PetsitterOperateTimeDTO(
+                                (String) timeMap.get("start"),
+                                (String) timeMap.get("end")
+                        )
+                );
+            }
+        }
+
+        return new OperatingTimeResponseDTO(petsitterId, result);
+    }
 
 }
 

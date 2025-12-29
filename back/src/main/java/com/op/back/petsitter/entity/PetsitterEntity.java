@@ -1,7 +1,10 @@
 package com.op.back.petsitter.entity;
 
+import com.op.back.petsitter.dto.PetsitterOperateTimeDTO;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.Map;
 
 @Getter
 @NoArgsConstructor
@@ -10,6 +13,7 @@ public class PetsitterEntity {
     private String petsitterId;
     private String name;
     private String profileImageUrl;
+    private String phone;
 
     private String address;
     private double lat;
@@ -20,8 +24,6 @@ public class PetsitterEntity {
     private double mannerTemp;
 
     private String caption;
-
-    private boolean verified;
 
     private int career;
     private int completeCount;

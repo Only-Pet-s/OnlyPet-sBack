@@ -3,13 +3,15 @@ package com.op.back.petsitter.dto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Map;
+
 @Getter
 @AllArgsConstructor
 public class PetsitterCardDTO {
     private String petsitterId; // 펫 시터 아이디
     private String name; // 펫 시터 이름
     private String profileImageUrl; // 펫 시터 프로필 사진
-
+    private String phone;
     private String address; // 펫 시터 주소
     private double distance; // 거리
     private double rating; // 평점
