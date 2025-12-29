@@ -3,10 +3,7 @@ package com.op.back.petsitter.service;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
-import com.op.back.petsitter.dto.PetsitterCardDTO;
-import com.op.back.petsitter.dto.PetsitterRegisterDTO;
-import com.op.back.petsitter.dto.PetsitterRegisterRequestDTO;
-import com.op.back.petsitter.dto.TmapDTO;
+import com.op.back.petsitter.dto.*;
 import com.op.back.petsitter.entity.PetsitterEntity;
 import com.op.back.petsitter.repository.PetsitterRepository;
 import com.op.back.petsitter.util.DistanceUtil;
@@ -14,7 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -151,6 +150,47 @@ public class PetsitterService {
             case "price" -> Comparator.comparing(PetsitterCardDTO::getPrice);
             default -> Comparator.comparing(PetsitterCardDTO::getDistance);
         };
+    }
+
+    public void updatePetsitter(String uid, PetsitterUpdateRequestDTO request) {
+        DocumentReference petSitterRef = firestore.collection("petsitters").document(uid);
+
+        DocumentSnapshot snapshot;
+        try{
+            snapshot = petSitterRef.get().get();
+        }catch(Exception e){
+            throw new RuntimeException(e);
+        }
+
+        if(!snapshot.exists()){
+            throw new IllegalStateException("펫시터 정보가 존재하지 않습니다.");
+        }
+
+        Map<String, Object> updates = new HashMap<>();
+
+        if(request.getAddress() != null){
+            TmapDTO coord = tmapService.convertAddressToLatLng(request.getAddress());
+
+            updates.put("address", request.getAddress());
+            updates.put("lat", coord.getLat());
+            updates.put("lng", coord.getLng());
+        }
+
+        if(request.getCaption() != null){updates.put("caption", request.getCaption());}
+        if(request.getCareer() != null){updates.put("career", request.getCareer());}
+        if(request.getPrice() != null){updates.put("price", request.getPrice());}
+
+        if(request.getDog() != null){updates.put("dog", request.getDog());}
+        if(request.getCat() != null){updates.put("cat", request.getCat());}
+        if(request.getEtc() != null){updates.put("etc", request.getEtc());}
+
+        if(request.getReserveAvailable() != null){updates.put("reserveAvailable", request.getReserveAvailable());}
+
+        if(updates.isEmpty()){
+            throw new IllegalStateException("수정할 내용이 없습니다.");
+        }
+
+        petSitterRef.update(updates);
     }
 }
 
