@@ -17,9 +17,7 @@ public class PetsitterRepository {
     public List<PetsitterEntity> findPetsitters(
             String address,
             String petType,
-            Boolean reserveAvailable,
-            Boolean verified
-    ) {
+            Boolean reserveAvailable) {
         Query query = firestore.collection("petsitters");
 
         if (address != null) {
@@ -28,10 +26,6 @@ public class PetsitterRepository {
 
         if (reserveAvailable != null) {
             query = query.whereEqualTo("reserveAvailable", reserveAvailable);
-        }
-
-        if (verified != null) {
-            query = query.whereEqualTo("verified", verified);
         }
 
         if (petType != null) {

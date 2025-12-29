@@ -8,6 +8,7 @@ import com.op.back.petsitter.entity.PetsitterEntity;
 import com.op.back.petsitter.repository.PetsitterRepository;
 import com.op.back.petsitter.util.DistanceUtil;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -30,7 +31,6 @@ public class PetsitterService {
             Integer minPrice,
             Integer maxPrice,
             Boolean reserveAvailable,
-            Boolean verified,
             String sort,
             Double userLat,
             Double userLng
@@ -38,7 +38,7 @@ public class PetsitterService {
 
         List<PetsitterEntity> petsitters =
                 petsitterRepository.findPetsitters(
-                        Address, petType, reserveAvailable, verified
+                        Address, petType, reserveAvailable
                 );
 
         return petsitters.stream()
@@ -49,6 +49,28 @@ public class PetsitterService {
                 // 정렬
                 .sorted(getComparator(sort))
                 .toList();
+    }
+
+    public PetsitterCardDTO getPetsitter(String petsitterId, Double lat, Double lng) {
+        DocumentSnapshot snapshot = null;
+        try {
+            snapshot = firestore.collection("petsitters")
+                    .document(petsitterId)
+                    .get().get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (!snapshot.exists()) {
+            throw new IllegalStateException("펫시터를 찾을 수 없습니다.");
+        }
+
+        PetsitterEntity entity =
+                snapshot.toObject(PetsitterEntity.class);
+
+        return toDTO(entity, lat, lng); // 거리 계산 X
     }
 
     public void registerPetsitter(
@@ -133,7 +155,6 @@ public class PetsitterService {
                 p.getRating(),
                 p.getMannerTemp(),
                 p.getCaption(),
-                p.isVerified(),
                 p.getCareer(),
                 p.getCompleteCount(),
                 p.getResponseRatio(),
@@ -195,5 +216,7 @@ public class PetsitterService {
 
         petSitterRef.update(updates);
     }
+
+
 }
 

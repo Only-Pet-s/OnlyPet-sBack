@@ -17,8 +17,6 @@ public class PetsitterCardDTO {
 
     private String caption; // 펫 시터의 설명글
 
-    private boolean isVerified; // 인증 여부(자격증)
-
     private int career; // 경력 년수
     private int completeCount; // 완료 횟수
     private int responseRatio; // 응답률
