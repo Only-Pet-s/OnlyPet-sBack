@@ -12,6 +12,8 @@ public class PetsitterRegisterDTO {
     private String name;
     private String profileImageUrl;
     private String address;
+    private String phone;
+
     private double lat;
     private double lng;
 

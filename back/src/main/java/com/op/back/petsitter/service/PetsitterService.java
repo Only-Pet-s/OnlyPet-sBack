@@ -77,6 +77,8 @@ public class PetsitterService {
         if (isPetsitter == null || !isPetsitter) {
             throw new IllegalStateException("펫시터 권한이 없는 사용자입니다.");
         }
+        // users 컬렉션에서 폰 번호 가져오기
+        String phone = user.getString("phone");
 
         TmapDTO tmapDTO = null;
         try {
@@ -91,6 +93,7 @@ public class PetsitterService {
                 user.getString("name"),
                 user.getString("profileImageUrl"),
                 register.getAddress(),
+                phone,
                 tmapDTO.getLat(),
                 tmapDTO.getLng(),
                 register.getCaption(),
@@ -175,7 +178,7 @@ public class PetsitterService {
             updates.put("lat", coord.getLat());
             updates.put("lng", coord.getLng());
         }
-
+        if(request.getPhone() != null){updates.put("phone", request.getPhone());}
         if(request.getCaption() != null){updates.put("caption", request.getCaption());}
         if(request.getCareer() != null){updates.put("career", request.getCareer());}
         if(request.getPrice() != null){updates.put("price", request.getPrice());}

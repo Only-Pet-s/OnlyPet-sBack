@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PetsitterUpdateRequestDTO {
     private String address;
+    private String phone;
     private String caption;
     private Integer career;
     private Integer price;
