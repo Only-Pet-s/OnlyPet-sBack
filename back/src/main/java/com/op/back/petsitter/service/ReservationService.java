@@ -204,7 +204,7 @@ public class ReservationService {
                         .toList()
         );
     }
-
+    // db에 들어갈 요일 형식
     private String toShortDay(DayOfWeek dayOfWeek) {
         return dayOfWeek.name().substring(0, 3); // MONDAY -> MON
     }
