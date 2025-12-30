@@ -1,13 +1,12 @@
 package com.op.back.petsitter.service;
 
 import com.google.cloud.Timestamp;
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.QuerySnapshot;
+import com.google.cloud.firestore.*;
 import com.op.back.petsitter.dto.AvailableTimeResponseDTO;
+import com.op.back.petsitter.dto.CancelReservationResponseDTO;
 import com.op.back.petsitter.dto.ReservationRequestDTO;
 import com.op.back.petsitter.exception.ReservationException;
+import com.op.back.petsitter.util.PaymentUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
@@ -204,8 +204,99 @@ public class ReservationService {
                         .toList()
         );
     }
+
+    public CancelReservationResponseDTO cancelReservation(
+            String reservationId,
+            String uid
+    ) throws Exception {
+
+        DocumentReference ref =
+                firestore.collection("reservations")
+                        .document(reservationId);
+
+        return firestore.runTransaction(tx -> {
+
+            DocumentSnapshot snap = tx.get(ref).get();
+
+            if (!snap.exists()) {
+                throw new ReservationException("예약이 존재하지 않습니다.");
+            }
+
+            if (!uid.equals(snap.getString("userUid"))) {
+                throw new ReservationException("예약 취소 권한이 없습니다.");
+            }
+
+            if (!"RESERVED".equals(snap.getString("reservationStatus"))) {
+                throw new ReservationException("취소 가능한 예약이 아닙니다.");
+            }
+
+            LocalDate date = LocalDate.parse(snap.getString("date"));
+            LocalTime startTime =
+                    LocalTime.parse(snap.getString("startTime"));
+            int price = snap.getLong("price").intValue();
+
+            // 환불 수수료
+            int fee = PaymentUtil.calculateCancelFee(date, startTime, price);
+            int refundAmount = price - fee;
+
+            // 환불 처리
+            paymentRefund(tx, ref, refundAmount);
+
+            // 이후 예약 취소까지
+            tx.update(ref,
+                    "reservationStatus", "CANCELED",
+                    "paymentStatus", "REFUNDED",
+                    "cancelFee", fee,
+                    "refundAmount", refundAmount,
+                    "canceledAt", Timestamp.now()
+            );
+
+            return new CancelReservationResponseDTO(
+                    reservationId,
+                    price,
+                    fee,
+                    refundAmount
+            );
+        }).get();
+    }
+
     // db에 들어갈 요일 형식
     private String toShortDay(DayOfWeek dayOfWeek) {
         return dayOfWeek.name().substring(0, 3); // MONDAY -> MON
+    }
+
+    // 결제까지 완료된 예약에 대한 환불
+    private void paymentRefund(
+            Transaction tx,
+            DocumentReference reservationRef,
+            int refundAmount
+    ) {
+
+        DocumentSnapshot snap = null;
+        try {
+            snap = tx.get(reservationRef).get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        // 1. 결제 상태 검증
+        String paymentStatus = snap.getString("paymentStatus");
+        if (!"COMPLETED".equals(paymentStatus)) {
+            throw new ReservationException("환불 가능한 결제 상태가 아닙니다.");
+        }
+
+        // 2. 중복 환불 방지
+        if ("REFUNDED".equals(paymentStatus)) {
+            return; // 이미 환불됨 -> idempotent
+        }
+
+        // 3. 가상 환불 처리
+        tx.update(reservationRef,
+                "paymentStatus", "REFUNDED",
+                "refundAmount", refundAmount,
+                "refundAt", Timestamp.now()
+        );
     }
 }

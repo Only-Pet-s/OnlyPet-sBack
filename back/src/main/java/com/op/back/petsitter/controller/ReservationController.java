@@ -1,8 +1,8 @@
 package com.op.back.petsitter.controller;
 
 import com.op.back.auth.util.JwtUtil;
+import com.op.back.petsitter.dto.CancelReservationResponseDTO;
 import com.op.back.petsitter.dto.ReservationRequestDTO;
-import com.op.back.petsitter.service.PetsitterService;
 import com.op.back.petsitter.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -49,4 +49,22 @@ public class ReservationController {
                 reservationService.getAvailableTimes(petsitterId, date)
         );
     }
+
+    @PostMapping("/{reservationId}/cancel")
+    public ResponseEntity<?> cancel(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String reservationId
+    ) {
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+
+        CancelReservationResponseDTO res = null;
+        try {
+            res = reservationService.cancelReservation(reservationId, uid);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        return ResponseEntity.ok(res);
+    }
+
 }
