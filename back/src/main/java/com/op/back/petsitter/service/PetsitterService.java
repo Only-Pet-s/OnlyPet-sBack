@@ -3,6 +3,7 @@ package com.op.back.petsitter.service;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.QuerySnapshot;
 import com.op.back.petsitter.dto.*;
 import com.op.back.petsitter.entity.PetsitterEntity;
 import com.op.back.petsitter.repository.PetsitterRepository;
@@ -11,10 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 @Service

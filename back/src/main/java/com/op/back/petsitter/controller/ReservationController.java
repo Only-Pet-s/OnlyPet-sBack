@@ -2,6 +2,7 @@ package com.op.back.petsitter.controller;
 
 import com.op.back.auth.util.JwtUtil;
 import com.op.back.petsitter.dto.ReservationRequestDTO;
+import com.op.back.petsitter.service.PetsitterService;
 import com.op.back.petsitter.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -37,5 +38,15 @@ public class ReservationController {
                                 "message", e.getMessage()
                         ));
         }
+    }
+
+    @GetMapping("/getAvailableT/{petsitterId}")
+    public ResponseEntity<?> getAvailableT(
+            @PathVariable String petsitterId,
+            @RequestParam String date
+    ){
+        return ResponseEntity.ok(
+                reservationService.getAvailableTimes(petsitterId, date)
+        );
     }
 }

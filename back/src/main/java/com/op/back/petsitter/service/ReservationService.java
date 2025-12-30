@@ -5,15 +5,18 @@ import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.QuerySnapshot;
+import com.op.back.petsitter.dto.AvailableTimeResponseDTO;
 import com.op.back.petsitter.dto.ReservationRequestDTO;
 import com.op.back.petsitter.exception.ReservationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +48,34 @@ public class ReservationService {
 
                 LocalTime reqStart = LocalTime.parse(req.getStartTime());
                 LocalTime reqEnd   = LocalTime.parse(req.getEndTime());
+
+                DocumentSnapshot petsitter =
+                        firestore.collection("petsitters")
+                                .document(req.getPetsitterId())
+                                .get().get();
+
+                Map<String, Object> operatingTime =
+                        (Map<String, Object>) petsitter.get("operatingTime");
+
+                if (operatingTime == null) {
+                    throw new ReservationException("해당 날짜에는 운영하지 않습니다.");
+                }
+
+                String dayKey = requestDate.getDayOfWeek().name().substring(0, 3); // MON, TUE ...
+                Map<String, String> dayTime =
+                        (Map<String, String>) operatingTime.get(dayKey);
+
+                if (dayTime == null) {
+                    throw new ReservationException("해당 날짜에는 운영하지 않습니다.");
+                }
+
+                LocalTime open  = LocalTime.parse(dayTime.get("start"));
+                LocalTime close = LocalTime.parse(dayTime.get("end"));
+
+                // 운영시간 범위 검증
+                if (reqStart.isBefore(open) || reqEnd.isAfter(close)) {
+                    throw new ReservationException("운영시간 외에는 예약할 수 없습니다.");
+                }
 
                 for (DocumentSnapshot doc : snapshots.getDocuments()) {
                     LocalTime existStart = LocalTime.parse(doc.getString("startTime"));
@@ -88,5 +119,93 @@ public class ReservationService {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    // 예약 가능 시간 조회
+    public AvailableTimeResponseDTO getAvailableTimes(String petsitterId, String date) {
+        LocalDate requestDate = LocalDate.parse(date);
+        LocalDate today = LocalDate.now();
+
+        // 과거 날짜일 경우 빈 칸
+        if (requestDate.isBefore(today)) {
+            return new AvailableTimeResponseDTO(
+                    petsitterId, date, List.of()
+            );
+        }
+
+        // 1. 펫시터 운영시간 조회
+        DocumentSnapshot petsitter;
+        try {
+            petsitter = firestore.collection("petsitters")
+                    .document(petsitterId)
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException("펫시터 조회 실패", e);
+        }
+
+        Map<String, Object> operatingTime =
+                (Map<String, Object>) petsitter.get("operatingTime");
+
+        if (operatingTime == null) {
+            throw new ReservationException("해당 날짜에는 운영하지 않습니다.");
+        }
+
+        String day = toShortDay(requestDate.getDayOfWeek());
+
+        Map<String, String> dayTime =
+                (Map<String, String>) operatingTime.get(day);
+
+        if (dayTime == null) {
+            throw new ReservationException("해당 날짜에는 운영하지 않습니다.");
+        }
+
+        LocalTime start = LocalTime.parse(dayTime.get("start"));
+        LocalTime end   = LocalTime.parse(dayTime.get("end"));
+
+        // 2. 운영시간 전체 리스트 생성
+        List<LocalTime> slots = new ArrayList<>();
+        for (LocalTime t = start; t.isBefore(end); t = t.plusHours(1)) {
+            slots.add(t);
+        }
+
+        // 3. 오늘이면 현재 시간 이전 슬롯 제거
+        if (requestDate.equals(today)) {
+            LocalTime now = LocalTime.now();
+            slots.removeIf(t -> !t.isAfter(now));
+        }
+
+        // 4. 기존 예약 조회
+        QuerySnapshot reservations;
+        try {
+            reservations = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .whereEqualTo("date", date)
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED"))
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // 5. 예약 시간 제거
+        for (DocumentSnapshot doc : reservations.getDocuments()) {
+            LocalTime rs = LocalTime.parse(doc.getString("startTime"));
+            LocalTime re = LocalTime.parse(doc.getString("endTime"));
+
+            slots.removeIf(slot ->
+                    slot.isBefore(re) && slot.plusHours(1).isAfter(rs)
+            );
+        }
+
+        return new AvailableTimeResponseDTO(
+                petsitterId,
+                date,
+                slots.stream()
+                        .map(LocalTime::toString)
+                        .toList()
+        );
+    }
+
+    private String toShortDay(DayOfWeek dayOfWeek) {
+        return dayOfWeek.name().substring(0, 3); // MONDAY -> MON
     }
 }
