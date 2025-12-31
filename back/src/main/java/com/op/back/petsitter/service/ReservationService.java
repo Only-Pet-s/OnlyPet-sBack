@@ -86,6 +86,8 @@ public class ReservationService {
                     }
                 }
 
+                DocumentSnapshot userInfo = firestore.collection("users").document(uid).get().get();
+
                 DocumentReference ref =
                         firestore.collection("reservations").document();
 
@@ -95,6 +97,8 @@ public class ReservationService {
                 data.put("date", req.getDate());
                 data.put("startTime", req.getStartTime());
                 data.put("endTime", req.getEndTime());
+                data.put("phone", userInfo.get("phone"));
+                data.put("address", userInfo.get("address"));
                 data.put("careType", req.getCareType());
                 data.put("petType", req.getPetType());
                 data.put("petName", req.getPetName());
