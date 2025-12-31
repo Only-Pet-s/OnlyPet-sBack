@@ -299,6 +299,93 @@ public class ShortsService {
     }
 
 
+    //내가 누른 좋아요 조회
+    public List<ShortsResponse> getLikedShorts(String uid)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> likeDocs = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("shorts")
+                .collection("items")
+                .orderBy("likedAt", Query.Direction.DESCENDING)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<ShortsResponse> result = new ArrayList<>();
+
+        for (DocumentSnapshot likeDoc : likeDocs) {
+            String shortsId = likeDoc.getId();
+
+            DocumentSnapshot shortsDoc = firestore
+                    .collection("shorts")
+                    .document(shortsId)
+                    .get()
+                    .get();
+
+            if (!shortsDoc.exists()) continue;
+
+            Shorts s = toShorts(shortsDoc);
+
+            result.add(
+                    toResponse(
+                            s,
+                            true,   // liked
+                            false,  // bookmarked
+                            uid
+                    )
+            );
+        }
+        return result;
+    }
+
+    //내가 누른 북마크 조회
+    public List<ShortsResponse> getBookmarkedShorts(String uid)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> bookmarkDocs = firestore
+                .collection("users")
+                .document(uid)
+                .collection("bookmarks")
+                .document("shorts")
+                .collection("items")
+                .orderBy("bookmarkedAt", Query.Direction.DESCENDING)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<ShortsResponse> result = new ArrayList<>();
+
+        for (DocumentSnapshot bmDoc : bookmarkDocs) {
+            String shortsId = bmDoc.getId();
+
+            DocumentSnapshot shortsDoc = firestore
+                    .collection("shorts")
+                    .document(shortsId)
+                    .get()
+                    .get();
+
+            if (!shortsDoc.exists()) continue;
+
+            Shorts s = toShorts(shortsDoc);
+
+            result.add(
+                    toResponse(
+                            s,
+                            false, // liked
+                            true,  // bookmarked
+                            uid
+                    )
+            );
+        }
+        return result;
+    }
+
+
+
+
     // **내부 유틸** //
     private Shorts toShorts(DocumentSnapshot doc) {
         return Shorts.builder()

@@ -113,4 +113,15 @@ public class PostController {
         return postService.search(q);
     }
     
+    @GetMapping("/{uid}/likes")
+    public List<PostResponse> getLikedPosts(@PathVariable String uid)
+            throws Exception {
+        return postService.getLikedPosts(uid);
+    }
+
+    @GetMapping("/{uid}/bookmarks")
+    public List<PostResponse> getBookmarkedPosts(@PathVariable String uid)
+            throws Exception {
+        return postService.getBookmarkedPosts(uid);
+    }
 }

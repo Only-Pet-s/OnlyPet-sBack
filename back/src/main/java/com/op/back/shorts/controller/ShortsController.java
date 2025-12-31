@@ -94,4 +94,16 @@ public class ShortsController {
         public List<ShortsResponse> search(@RequestParam String q) {
                 return shortsService.search(q);
         }
+
+         @GetMapping("/{uid}/likes")
+        public List<ShortsResponse> getLikedShorts(@PathVariable String uid)
+                throws Exception {
+                return shortsService.getLikedShorts(uid);
+        }
+
+        @GetMapping("/{uid}/bookmarks")
+        public List<ShortsResponse> getBookmarkedShorts(@PathVariable String uid)
+                throws Exception {
+                return shortsService.getBookmarkedShorts(uid);
+        }
 }

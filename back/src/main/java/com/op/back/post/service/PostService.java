@@ -496,4 +496,90 @@ public class PostService {
         // Firestore 증가
         increaseViewCount(postId);
     }
+
+
+    //내가 누른 좋아요 가져오기.
+    public List<PostResponse> getLikedPosts(String uid)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> likeDocs = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("posts")
+                .collection("items")
+                .orderBy("likedAt", Query.Direction.DESCENDING)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<PostResponse> result = new ArrayList<>();
+
+        for (DocumentSnapshot likeDoc : likeDocs) {
+            String postId = likeDoc.getId();
+
+            DocumentSnapshot postDoc = firestore
+                    .collection("posts")
+                    .document(postId)
+                    .get()
+                    .get();
+
+            if (!postDoc.exists()) continue;
+
+            Post post = toPost(postDoc);
+
+            result.add(
+                    toListResponse(
+                            post,
+                            true,   // liked
+                            false,  // bookmarked (원하면 체크 가능)
+                            uid
+                    )
+            );
+        }
+        return result;
+    }
+
+    //내가 누른 북마크 조회
+    public List<PostResponse> getBookmarkedPosts(String uid)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> bookmarkDocs = firestore
+                .collection("users")
+                .document(uid)
+                .collection("bookmarks")
+                .document("posts")
+                .collection("items")
+                .orderBy("bookmarkedAt", Query.Direction.DESCENDING)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<PostResponse> result = new ArrayList<>();
+
+        for (DocumentSnapshot bmDoc : bookmarkDocs) {
+            String postId = bmDoc.getId();
+
+            DocumentSnapshot postDoc = firestore
+                    .collection("posts")
+                    .document(postId)
+                    .get()
+                    .get();
+
+            if (!postDoc.exists()) continue;
+
+            Post post = toPost(postDoc);
+
+            result.add(
+                    toListResponse(
+                            post,
+                            false, // liked
+                            true,  // bookmarked
+                            uid
+                    )
+            );
+        }
+        return result;
+    }
+
 }
