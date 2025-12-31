@@ -29,9 +29,10 @@ public class FirebaseStorageService {
 
         // 브라우저에서 바로 열리는 Firebase download URL
         return String.format(
-                "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media",
-                bucketName,
-                URLEncoder.encode(path, StandardCharsets.UTF_8)
+                "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media&token=%s",
+                bucket.getName(),
+                URLEncoder.encode(path, StandardCharsets.UTF_8),
+                blob.getMetadata().get("firebaseStorageDownloadTokens")
         );
     }
 
