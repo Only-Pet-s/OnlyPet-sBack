@@ -4,6 +4,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
 import com.op.back.petsitter.dto.AvailableTimeResponseDTO;
 import com.op.back.petsitter.dto.CancelReservationResponseDTO;
+import com.op.back.petsitter.dto.ReadUserReservationDTO;
 import com.op.back.petsitter.dto.ReservationRequestDTO;
 import com.op.back.petsitter.exception.ReservationException;
 import com.op.back.petsitter.util.PaymentUtil;
@@ -47,7 +48,7 @@ public class ReservationService {
                 }
 
                 LocalTime reqStart = LocalTime.parse(req.getStartTime());
-                LocalTime reqEnd   = LocalTime.parse(req.getEndTime());
+                LocalTime reqEnd = LocalTime.parse(req.getEndTime());
 
                 DocumentSnapshot petsitter =
                         firestore.collection("petsitters")
@@ -69,7 +70,7 @@ public class ReservationService {
                     throw new ReservationException("해당 날짜에는 운영하지 않습니다.");
                 }
 
-                LocalTime open  = LocalTime.parse(dayTime.get("start"));
+                LocalTime open = LocalTime.parse(dayTime.get("start"));
                 LocalTime close = LocalTime.parse(dayTime.get("end"));
 
                 // 운영시간 범위 검증
@@ -79,7 +80,7 @@ public class ReservationService {
 
                 for (DocumentSnapshot doc : snapshots.getDocuments()) {
                     LocalTime existStart = LocalTime.parse(doc.getString("startTime"));
-                    LocalTime existEnd   = LocalTime.parse(doc.getString("endTime"));
+                    LocalTime existEnd = LocalTime.parse(doc.getString("endTime"));
 
                     if (existStart.isBefore(reqEnd) && existEnd.isAfter(reqStart)) {
                         throw new ReservationException("이미 예약된 시간이 포함되어 있습니다.");
@@ -164,7 +165,7 @@ public class ReservationService {
         }
 
         LocalTime start = LocalTime.parse(dayTime.get("start"));
-        LocalTime end   = LocalTime.parse(dayTime.get("end"));
+        LocalTime end = LocalTime.parse(dayTime.get("end"));
 
         // 2. 운영시간 전체 리스트 생성
         List<LocalTime> slots = new ArrayList<>();
@@ -262,6 +263,47 @@ public class ReservationService {
                     refundAmount
             );
         }).get();
+    }
+
+    public List<ReadUserReservationDTO> getUserReservation(String uid) {
+        QuerySnapshot snapshots;
+        try {
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("userUid", uid)
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "COMPLETED", "CANCELED", "REFUNDED"))
+                    .orderBy("date", Query.Direction.DESCENDING)
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        List<ReadUserReservationDTO> result = new ArrayList<>();
+
+        for (DocumentSnapshot doc : snapshots.getDocuments()) {
+            String petsitterId = doc.getString("petsitterId");
+
+            DocumentSnapshot petsitter;
+            try {
+                petsitter = firestore.collection("petsitters")
+                        .document(petsitterId)
+                        .get().get();
+            } catch (Exception e) {
+                continue;
+            }
+
+            result.add(new ReadUserReservationDTO(
+                    doc.getId(),
+                    petsitterId,
+                    petsitter.getString("name"),
+                    petsitter.getString("profileImageUrl"),
+                    doc.getString("date"),
+                    doc.getString("startTime"),
+                    doc.getString("endTime"),
+                    doc.getString("reservationStatus")
+                    ));
+        }
+
+        return result;
     }
 
     // db에 들어갈 요일 형식

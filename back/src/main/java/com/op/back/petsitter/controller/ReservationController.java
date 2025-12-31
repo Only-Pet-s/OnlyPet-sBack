@@ -2,6 +2,7 @@ package com.op.back.petsitter.controller;
 
 import com.op.back.auth.util.JwtUtil;
 import com.op.back.petsitter.dto.CancelReservationResponseDTO;
+import com.op.back.petsitter.dto.ReadUserReservationDTO;
 import com.op.back.petsitter.dto.ReservationRequestDTO;
 import com.op.back.petsitter.service.ReservationService;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -65,6 +67,17 @@ public class ReservationController {
         }
 
         return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/myReserve")
+    public ResponseEntity<List<ReadUserReservationDTO>> getMyReserve(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+
+        List<ReadUserReservationDTO> result = reservationService.getUserReservation(uid);
+
+        return ResponseEntity.ok(result);
     }
 
 }
