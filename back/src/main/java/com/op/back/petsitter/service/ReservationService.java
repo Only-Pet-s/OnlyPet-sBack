@@ -2,10 +2,7 @@ package com.op.back.petsitter.service;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
-import com.op.back.petsitter.dto.AvailableTimeResponseDTO;
-import com.op.back.petsitter.dto.CancelReservationResponseDTO;
-import com.op.back.petsitter.dto.ReadUserReservationDTO;
-import com.op.back.petsitter.dto.ReservationRequestDTO;
+import com.op.back.petsitter.dto.*;
 import com.op.back.petsitter.exception.ReservationException;
 import com.op.back.petsitter.util.PaymentUtil;
 import lombok.RequiredArgsConstructor;
@@ -300,7 +297,62 @@ public class ReservationService {
                     doc.getString("startTime"),
                     doc.getString("endTime"),
                     doc.getString("reservationStatus")
-                    ));
+            ));
+        }
+
+        return result;
+    }
+
+    public List<ReadPetsitterReservedDTO> getPetsitterReserved(String petsitterId) {
+        DocumentSnapshot petsitter;
+        try{
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if(!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("펫시터 권한이 없습니다.");
+            }
+        }catch(Exception e){
+            throw new RuntimeException(e);
+        }
+
+        QuerySnapshot snapshots;
+        try {
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED"))
+                    .orderBy("date", Query.Direction.DESCENDING)
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        List<ReadPetsitterReservedDTO> result = new ArrayList<>();
+
+        for (DocumentSnapshot doc : snapshots.getDocuments()) {
+            String userUid = doc.getString("userUid");
+
+            DocumentSnapshot user;
+            try {
+                user = firestore.collection("users")
+                        .document(userUid)
+                        .get().get();
+            } catch (Exception e) {
+                continue;
+            }
+
+            result.add(new ReadPetsitterReservedDTO(
+                    doc.getId(),
+                    userUid,
+                    user.getString("name"),
+                    user.getString("profileImageUrl"),
+                    user.getString("phone"),
+                    user.getString("address"),
+                    doc.getString("date"),
+                    doc.getString("startTime"),
+                    doc.getString("endTime"),
+                    doc.getString("petType"),
+                    doc.getString("petName"),
+                    doc.getString("reservationStatus")
+            ));
         }
 
         return result;
