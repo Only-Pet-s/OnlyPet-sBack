@@ -113,12 +113,14 @@ public class PostController {
         return postService.search(q);
     }
     
+    //내가 누른 좋아요 포스트
     @GetMapping("/{uid}/likes")
     public List<PostResponse> getLikedPosts(@PathVariable String uid)
             throws Exception {
         return postService.getLikedPosts(uid);
     }
 
+    //내가 누른 북마크 포스트
     @GetMapping("/{uid}/bookmarks")
     public List<PostResponse> getBookmarkedPosts(@PathVariable String uid)
             throws Exception {
