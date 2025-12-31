@@ -33,6 +33,7 @@ public class PostCleanupService {
 
         // 3. 모든 user 북마크에서 삭제
         deleteAllBookmarks(postId);
+        deleteAllUserLikes(postId);
     }
 
     private void deleteAllBookmarks(String postId)
@@ -55,6 +56,30 @@ public class PostCleanupService {
 
             if (bookmarkRef.get().get().exists()) {
                 bookmarkRef.delete().get();
+            }
+        }
+    }
+
+    private void deleteAllUserLikes(String postId)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> users = firestore
+                .collection("users")
+                .get()
+                .get()
+                .getDocuments();
+
+        for (DocumentSnapshot user : users) {
+            DocumentReference likeRef = firestore
+                    .collection("users")
+                    .document(user.getId())
+                    .collection("likes")
+                    .document("posts")
+                    .collection("items")
+                    .document(postId);
+
+            if (likeRef.get().get().exists()) {
+                likeRef.delete().get();
             }
         }
     }

@@ -136,6 +136,14 @@ public class ShortsService {
 
         DocumentReference sRef = firestore.collection(SHORTS).document(shortsId);
         DocumentReference likeRef = sRef.collection("likes").document(uid);
+        
+        DocumentReference userLikeRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("shorts")
+                .collection("items")
+                .document(shortsId);
 
         firestore.runTransaction(tx -> {
             DocumentSnapshot likeSnap = tx.get(likeRef).get();
@@ -146,6 +154,11 @@ public class ShortsService {
 
                 Long count = Optional.ofNullable(shortsSnap.getLong("likeCount")).orElse(0L);
                 tx.update(sRef, "likeCount", count + 1);
+
+                tx.set(userLikeRef, Map.of(
+                        "shortsId", shortsId,
+                        "likedAt", Timestamp.now()
+                ));
             }
             return null;
         }).get();
@@ -156,7 +169,15 @@ public class ShortsService {
         throws ExecutionException, InterruptedException {
         DocumentReference sRef = firestore.collection(SHORTS).document(shortsId);
         DocumentReference likeRef = sRef.collection("likes").document(uid);
-
+        
+        DocumentReference userLikeRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("shorts")
+                .collection("items")
+                .document(shortsId);
+        
         firestore.runTransaction(tx -> {
             DocumentSnapshot likeSnap = tx.get(likeRef).get();
             DocumentSnapshot shortsSnap = tx.get(sRef).get();
@@ -165,6 +186,8 @@ public class ShortsService {
                 Long count = Optional.ofNullable(shortsSnap.getLong("likeCount")).orElse(0L);
                 tx.delete(likeRef);
                 tx.update(sRef, "likeCount", Math.max(0L, count - 1));
+
+                tx.delete(userLikeRef);
             }
             return null;
         }).get();
@@ -215,11 +238,22 @@ public class ShortsService {
                 .collection("items")
                 .document(shortsId);
 
+        DocumentReference shortsBookmarkRef = firestore
+                .collection("shorts")
+                .document(shortsId)
+                .collection("bookmarks")
+                .document(uid);
+
         firestore.runTransaction(tx -> {
             DocumentSnapshot snap = tx.get(bookmarkRef).get();
             if (!snap.exists()) {
                 tx.set(bookmarkRef, Map.of(
                         "shortsId", shortsId,
+                        "bookmarkedAt", Timestamp.now()
+                ));
+
+                tx.set(shortsBookmarkRef, Map.of(
+                        "uid", uid,
                         "bookmarkedAt", Timestamp.now()
                 ));
             }
@@ -239,10 +273,17 @@ public class ShortsService {
                 .collection("items")
                 .document(shortsId);
 
+        DocumentReference shortsBookmarkRef = firestore
+                .collection("shorts")
+                .document(shortsId)
+                .collection("bookmarks")
+                .document(uid);
+
         firestore.runTransaction(tx -> {
             DocumentSnapshot snap = tx.get(bookmarkRef).get();
             if (snap.exists()) {
                 tx.delete(bookmarkRef);
+                tx.delete(shortsBookmarkRef);
             }
             return null;
         }).get();

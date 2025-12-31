@@ -168,6 +168,13 @@ public class PostService {
                 firestore.collection(POSTS_COLLECTION).document(postId);
         DocumentReference likeRef =
                 postRef.collection("likes").document(uid);
+        DocumentReference userLikeRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("posts")
+                .collection("items")
+                .document(postId);
 
         firestore.runTransaction(tx -> {
 
@@ -183,6 +190,12 @@ public class PostService {
                 // 그 다음 WRITE
                 tx.set(likeRef, Map.of("likedAt", Timestamp.now()));
                 tx.update(postRef, "likeCount", likeCount + 1);
+
+                //user 기준 저장(이중)
+                tx.set(userLikeRef, Map.of(
+                        "postId", postId,
+                        "likedAt", Timestamp.now()
+                ));
             }
 
             return null;
@@ -195,6 +208,14 @@ public class PostService {
             firestore.collection(POSTS_COLLECTION).document(postId);
         DocumentReference likeRef =
                 postRef.collection("likes").document(uid);
+        
+        DocumentReference userLikeRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("posts")
+                .collection("items")
+                .document(postId);
         firestore.runTransaction(tx -> {
             DocumentSnapshot likeSnap = tx.get(likeRef).get();
             DocumentSnapshot postSnap = tx.get(postRef).get();
@@ -204,6 +225,9 @@ public class PostService {
                         Optional.ofNullable(postSnap.getLong("likeCount")).orElse(0L);
                 tx.delete(likeRef);
                 tx.update(postRef, "likeCount", Math.max(0L, likeCount - 1));
+
+                //user기준 삭제
+                tx.delete(userLikeRef);
             }
 
             return null;
@@ -220,12 +244,22 @@ public class PostService {
                 .document("posts")
                 .collection("items")
                 .document(postId);
-
+        
+        DocumentReference postBookmarkRef = firestore
+                .collection("posts")
+                .document(postId)
+                .collection("bookmarks")
+                .document(uid);
+        
         firestore.runTransaction(tx -> {
             DocumentSnapshot snap = tx.get(bookmarkRef).get();
             if (!snap.exists()) {
                 tx.set(bookmarkRef, Map.of(
                         "postId", postId,
+                        "bookmarkedAt", Timestamp.now()
+                ));
+                tx.set(postBookmarkRef, Map.of(
+                        "uid", uid,
                         "bookmarkedAt", Timestamp.now()
                 ));
             }
@@ -244,10 +278,16 @@ public class PostService {
                 .document("posts")
                 .collection("items")
                 .document(postId);
+        DocumentReference postBookmarkRef = firestore
+                .collection("posts")
+                .document(postId)
+                .collection("bookmarks")
+                .document(uid);
         firestore.runTransaction(tx -> {
             DocumentSnapshot snap = tx.get(bookmarkRef).get();
             if (snap.exists()) {
                 tx.delete(bookmarkRef);
+                tx.delete(postBookmarkRef);
             }
             return null;
         }).get();
