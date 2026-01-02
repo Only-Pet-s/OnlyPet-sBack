@@ -11,6 +11,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.URLEncoder;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class FirebaseStorageService {
@@ -21,18 +23,22 @@ public class FirebaseStorageService {
         Bucket bucket = StorageClient.getInstance().bucket();
         String bucketName = bucket.getName();
 
-        Blob blob = bucket.create(
-                path,
-                file.getInputStream(),
-                file.getContentType()
-        );
+        String token = UUID.randomUUID().toString();
 
-        // 브라우저에서 바로 열리는 Firebase download URL
+        BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, path)
+                .setContentType(file.getContentType())
+                .setMetadata(Map.of(
+                        "firebaseStorageDownloadTokens", token
+                ))
+                .build();
+
+        Blob blob = bucket.getStorage().create(blobInfo, file.getBytes());
+
         return String.format(
                 "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media&token=%s",
-                bucket.getName(),
+                bucketName,
                 URLEncoder.encode(path, StandardCharsets.UTF_8),
-                blob.getMetadata().get("firebaseStorageDownloadTokens")
+                token
         );
     }
 

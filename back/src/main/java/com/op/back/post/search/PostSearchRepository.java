@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 public class PostSearchRepository {
 
     private final ElasticsearchClient client;
-    private static final String INDEX = "post";
+    private static final String INDEX = "post-index";
 
     public void save(PostDocument document) {
         try {

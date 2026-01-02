@@ -77,7 +77,7 @@ public class PostService {
                     .mediaType(request.getMediaType())
                     .likeCount(0)
                     .commentCount(0)
-                    .createdAt(Instant.now())
+                    .createdAt(Instant.now().toString())
                     .build()
     );
 
@@ -423,7 +423,7 @@ public class PostService {
                 .liked(false)
                 .bookmarked(false)
                 .mine(false)
-                .createdAt(doc.getCreatedAt())
+                .createdAt(Instant.parse(doc.getCreatedAt()))
                 .build();
     }
 

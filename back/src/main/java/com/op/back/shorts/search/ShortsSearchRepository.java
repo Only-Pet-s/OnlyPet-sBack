@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 public class ShortsSearchRepository {
 
      private final ElasticsearchClient client;
-    private static final String INDEX = "shorts";
+    private static final String INDEX = "shorts-index";
 
     // ES 저장 (생성 시)
     public void save(ShortsDocument document) {
