@@ -3,10 +3,13 @@ package com.op.back.search.init;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class LectureIndexInitializer {
 
     private static final String INDEX = "lecture-index";
@@ -22,9 +25,12 @@ public class LectureIndexInitializer {
 
             if (!exists) {
                 createLectureIndex();
+                log.info("[ES] lecture-index created");
+            } else {
+                log.info("[ES] lecture-index already exists");
             }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize lecture-index", e);
+            log.error("[ES] lecture-index initialization failed. Search disabled.", e);
         }
     }
 

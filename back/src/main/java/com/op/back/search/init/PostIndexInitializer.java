@@ -3,10 +3,13 @@ package com.op.back.search.init;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class PostIndexInitializer {
 
     private static final String INDEX = "post-index";
@@ -22,9 +25,12 @@ public class PostIndexInitializer {
 
             if (!exists) {
                 createPostIndex();
+                log.info("[ES] post-index created");
+            } else {
+                log.info("[ES] post-index already exists");
             }
         } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize post-index", e);
+            log.error("[ES] post-index initialization failed. Search disabled.", e);
         }
     }
 
