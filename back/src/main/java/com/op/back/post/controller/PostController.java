@@ -107,15 +107,23 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
-    //해시태그 검색
+    //검색 [엘라스틱]
     @GetMapping("/search")
-    public ResponseEntity<List<PostResponse>> searchByHashtag(
-            @RequestParam String tag,
-            @RequestParam(defaultValue = "20") int limit
-    ) throws ExecutionException, InterruptedException {
+    public List<PostResponse> search(@RequestParam String q) {
+        return postService.search(q);
+    }
+    
+    //내가 누른 좋아요 포스트
+    @GetMapping("/{uid}/likes")
+    public List<PostResponse> getLikedPosts(@PathVariable String uid)
+            throws Exception {
+        return postService.getLikedPosts(uid);
+    }
 
-        return ResponseEntity.ok(
-                postService.searchByHashtag(tag, limit, currentUid())
-        );
+    //내가 누른 북마크 포스트
+    @GetMapping("/{uid}/bookmarks")
+    public List<PostResponse> getBookmarkedPosts(@PathVariable String uid)
+            throws Exception {
+        return postService.getBookmarkedPosts(uid);
     }
 }

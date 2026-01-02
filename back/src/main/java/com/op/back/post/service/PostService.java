@@ -10,6 +10,8 @@ import com.op.back.common.service.FirebaseStorageService;
 import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
 import com.op.back.post.model.Post;
+import com.op.back.post.search.PostDocument;
+import com.op.back.post.search.PostSearchRepository;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -27,13 +29,11 @@ import java.util.concurrent.TimeUnit;
 public class PostService {
     private final Firestore firestore;
     private final FirebaseStorageService storageService;
-
     private final PostCleanupService cleanupService;
-
     //RedisTemplate
     private final StringRedisTemplate redisTemplate;
-
     private static final String POSTS_COLLECTION = "posts";
+    private final PostSearchRepository postSearchRepository;
 
     //게시글 생성
     public PostResponse createPost(PostCreateRequest request,MultipartFile mediaFile,
@@ -41,7 +41,6 @@ public class PostService {
             throws IOException, ExecutionException, InterruptedException {
 
         String postId = UUID.randomUUID().toString();
-
         String mediaUrl = storageService.uploadFile(
                 mediaFile,
                 "posts/" + uid + "/" + postId
@@ -65,6 +64,22 @@ public class PostService {
                 .document(postId)
                 .set(data)
                 .get();
+
+        postSearchRepository.save(
+            PostDocument.builder()
+                    .id(postId)
+                    .uid(uid)
+                    .content(request.getContent())
+                    .hashtags(
+                            Optional.ofNullable(request.getHashtags())
+                                    .orElse(List.of())
+                    )
+                    .mediaType(request.getMediaType())
+                    .likeCount(0)
+                    .commentCount(0)
+                    .createdAt(Instant.now().toString())
+                    .build()
+    );
 
         // 생성 직후 상세조회해서 Response 반환
         return getPost(postId, uid);
@@ -153,6 +168,13 @@ public class PostService {
                 firestore.collection(POSTS_COLLECTION).document(postId);
         DocumentReference likeRef =
                 postRef.collection("likes").document(uid);
+        DocumentReference userLikeRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("posts")
+                .collection("items")
+                .document(postId);
 
         firestore.runTransaction(tx -> {
 
@@ -168,6 +190,12 @@ public class PostService {
                 // 그 다음 WRITE
                 tx.set(likeRef, Map.of("likedAt", Timestamp.now()));
                 tx.update(postRef, "likeCount", likeCount + 1);
+
+                //user 기준 저장(이중)
+                tx.set(userLikeRef, Map.of(
+                        "postId", postId,
+                        "likedAt", Timestamp.now()
+                ));
             }
 
             return null;
@@ -180,6 +208,14 @@ public class PostService {
             firestore.collection(POSTS_COLLECTION).document(postId);
         DocumentReference likeRef =
                 postRef.collection("likes").document(uid);
+        
+        DocumentReference userLikeRef = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("posts")
+                .collection("items")
+                .document(postId);
         firestore.runTransaction(tx -> {
             DocumentSnapshot likeSnap = tx.get(likeRef).get();
             DocumentSnapshot postSnap = tx.get(postRef).get();
@@ -189,6 +225,9 @@ public class PostService {
                         Optional.ofNullable(postSnap.getLong("likeCount")).orElse(0L);
                 tx.delete(likeRef);
                 tx.update(postRef, "likeCount", Math.max(0L, likeCount - 1));
+
+                //user기준 삭제
+                tx.delete(userLikeRef);
             }
 
             return null;
@@ -205,12 +244,22 @@ public class PostService {
                 .document("posts")
                 .collection("items")
                 .document(postId);
-
+        
+        DocumentReference postBookmarkRef = firestore
+                .collection("posts")
+                .document(postId)
+                .collection("bookmarks")
+                .document(uid);
+        
         firestore.runTransaction(tx -> {
             DocumentSnapshot snap = tx.get(bookmarkRef).get();
             if (!snap.exists()) {
                 tx.set(bookmarkRef, Map.of(
                         "postId", postId,
+                        "bookmarkedAt", Timestamp.now()
+                ));
+                tx.set(postBookmarkRef, Map.of(
+                        "uid", uid,
                         "bookmarkedAt", Timestamp.now()
                 ));
             }
@@ -229,10 +278,16 @@ public class PostService {
                 .document("posts")
                 .collection("items")
                 .document(postId);
+        DocumentReference postBookmarkRef = firestore
+                .collection("posts")
+                .document(postId)
+                .collection("bookmarks")
+                .document(uid);
         firestore.runTransaction(tx -> {
             DocumentSnapshot snap = tx.get(bookmarkRef).get();
             if (snap.exists()) {
                 tx.delete(bookmarkRef);
+                tx.delete(postBookmarkRef);
             }
             return null;
         }).get();
@@ -264,6 +319,15 @@ public class PostService {
         return result;
     }
 
+    /*
+        엘라스틱 서치 기반 검색 
+    */
+    public List<PostResponse> search(String q) {
+        return postSearchRepository.search(q).stream()
+                .map(this::toSearchResponse)
+                .toList();
+    }
+
     //조회수 증가
     private void increaseViewCount(String postId)
             throws ExecutionException, InterruptedException {
@@ -292,7 +356,7 @@ public class PostService {
                 .commentAvailable(doc.getBoolean("commentAvailable"))
                 .likeCount(Optional.ofNullable(doc.getLong("likeCount")).orElse(0L))
                 .commentCount(Optional.ofNullable(doc.getLong("commentCount")).orElse(0L))
-                .viewCount(Optional.ofNullable(doc.getLong("viewCount")).orElse(0L)) // ✅
+                .viewCount(Optional.ofNullable(doc.getLong("viewCount")).orElse(0L))
                 .createdAt(doc.getTimestamp("createdAt"))
                 .build();
     }
@@ -336,6 +400,30 @@ public class PostService {
                 .bookmarked(bookmarked)
                 .mine(post.getUid().equals(currentUid))
                 .createdAt(toInstant(post.getCreatedAt()))
+                .build();
+    }
+
+    /**
+     * Elasticsearch 검색 결과 → PostResponse 변환
+     * (Firestore 조회 안 함, 검색 전용)
+     */
+    private PostResponse toSearchResponse(
+            com.op.back.post.search.PostDocument doc
+    ) {
+        return PostResponse.builder()
+                .id(doc.getId())
+                .uid(doc.getUid())
+                .nickname(getNickname(doc.getUid())) // 기존 로직 재사용
+                .content(doc.getContent())
+                .mediaType(doc.getMediaType())
+                .hashtags(doc.getHashtags())
+                .likeCount(doc.getLikeCount())
+                .commentCount(doc.getCommentCount())
+                .viewCount(0L)
+                .liked(false)
+                .bookmarked(false)
+                .mine(false)
+                .createdAt(Instant.parse(doc.getCreatedAt()))
                 .build();
     }
 
@@ -408,4 +496,90 @@ public class PostService {
         // Firestore 증가
         increaseViewCount(postId);
     }
+
+
+    //내가 누른 좋아요 가져오기.
+    public List<PostResponse> getLikedPosts(String uid)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> likeDocs = firestore
+                .collection("users")
+                .document(uid)
+                .collection("likes")
+                .document("posts")
+                .collection("items")
+                .orderBy("likedAt", Query.Direction.DESCENDING)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<PostResponse> result = new ArrayList<>();
+
+        for (DocumentSnapshot likeDoc : likeDocs) {
+            String postId = likeDoc.getId();
+
+            DocumentSnapshot postDoc = firestore
+                    .collection("posts")
+                    .document(postId)
+                    .get()
+                    .get();
+
+            if (!postDoc.exists()) continue;
+
+            Post post = toPost(postDoc);
+
+            result.add(
+                    toListResponse(
+                            post,
+                            true,   // liked
+                            false,  // bookmarked (원하면 체크 가능)
+                            uid
+                    )
+            );
+        }
+        return result;
+    }
+
+    //내가 누른 북마크 조회
+    public List<PostResponse> getBookmarkedPosts(String uid)
+            throws ExecutionException, InterruptedException {
+
+        List<QueryDocumentSnapshot> bookmarkDocs = firestore
+                .collection("users")
+                .document(uid)
+                .collection("bookmarks")
+                .document("posts")
+                .collection("items")
+                .orderBy("bookmarkedAt", Query.Direction.DESCENDING)
+                .get()
+                .get()
+                .getDocuments();
+
+        List<PostResponse> result = new ArrayList<>();
+
+        for (DocumentSnapshot bmDoc : bookmarkDocs) {
+            String postId = bmDoc.getId();
+
+            DocumentSnapshot postDoc = firestore
+                    .collection("posts")
+                    .document(postId)
+                    .get()
+                    .get();
+
+            if (!postDoc.exists()) continue;
+
+            Post post = toPost(postDoc);
+
+            result.add(
+                    toListResponse(
+                            post,
+                            false, // liked
+                            true,  // bookmarked
+                            uid
+                    )
+            );
+        }
+        return result;
+    }
+
 }

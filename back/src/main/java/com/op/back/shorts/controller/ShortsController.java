@@ -89,13 +89,21 @@ public class ShortsController {
                 return ResponseEntity.ok().build();
         }
 
-        // 해시태그 검색
+        //태그 검색
         @GetMapping("/search")
-        public ResponseEntity<List<ShortsResponse>> search(
-                        @RequestParam String tag,
-                        @RequestParam(defaultValue = "20") int limit) throws Exception {
+        public List<ShortsResponse> search(@RequestParam String q) {
+                return shortsService.search(q);
+        }
 
-                return ResponseEntity.ok(
-                                shortsService.searchByHashtag(tag, limit, currentUid()));
+         @GetMapping("/{uid}/likes")
+        public List<ShortsResponse> getLikedShorts(@PathVariable String uid)
+                throws Exception {
+                return shortsService.getLikedShorts(uid);
+        }
+
+        @GetMapping("/{uid}/bookmarks")
+        public List<ShortsResponse> getBookmarkedShorts(@PathVariable String uid)
+                throws Exception {
+                return shortsService.getBookmarkedShorts(uid);
         }
 }
