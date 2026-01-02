@@ -34,11 +34,13 @@ public class PostController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
             @RequestPart("data") PostCreateRequest request,
-            @RequestPart("media") MultipartFile media
+            @RequestPart("media") MultipartFile media,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+
     ) throws Exception {
 
         return ResponseEntity.ok(
-                postService.createPost(request, media, currentUid())
+                postService.createPost(request, media, thumbnail, currentUid())
         );
     }
 
@@ -63,14 +65,16 @@ public class PostController {
         );
     }
 
-    //게시글 수정 patch
-    @PatchMapping("/{postId}")
-    public ResponseEntity<PostResponse> updatePost(
+    //게시글 수정 patch (multipart: media/thumbnail 교체 가능)
+    @PatchMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PostResponse> updatePostMultipart(
             @PathVariable String postId,
-            @RequestBody PostUpdateRequest request
+            @RequestPart("data") PostUpdateRequest request,
+            @RequestPart(value = "media", required = false) MultipartFile media,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
     ) throws Exception {
         return ResponseEntity.ok(
-            postService.updatePost(postId, request, null, currentUid())
+                postService.updatePost(postId, request, media, thumbnail, currentUid())
         );
     }
 

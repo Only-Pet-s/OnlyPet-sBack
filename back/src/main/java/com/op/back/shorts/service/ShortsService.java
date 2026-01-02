@@ -37,10 +37,8 @@ public class ShortsService {
     private final ShortsSearchRepository shortsSearchRepository;
 
     // 쇼츠 생성
-    public String createShorts(ShortsCreateRequest request,
-                               MultipartFile videoFile,
-                               String uid)
-            throws IOException, ExecutionException, InterruptedException {
+    public String createShorts(ShortsCreateRequest request,MultipartFile videoFile, 
+                MultipartFile thumbnailFile,String uid) throws IOException, ExecutionException, InterruptedException {
 
         if (videoFile == null || videoFile.isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "video required");
@@ -53,10 +51,27 @@ public class ShortsService {
                 "shorts/" + uid + "/" + shortsId
         );
 
+        //썸네일 처리, 요청O -> 업로드/ if 요청X -> 1프레임추출
+        String thumbnailUrl = null;
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+                thumbnailUrl = storageService.uploadFile(
+                        thumbnailFile,
+                        "shorts/" + uid + "/" + shortsId + "/thumbnail"
+                );
+        } else {
+                // 서버에서 영상 1프레임 추출 (ffmpeg 필요)
+                byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(videoFile);
+                thumbnailUrl = storageService.uploadBytes(
+                        thumbBytes,
+                        "image/jpeg",
+                        "shorts/" + uid + "/" + shortsId + "/thumbnail.jpg"
+                );
+        }
+
         Map<String, Object> data = new HashMap<>();
         data.put("uid", uid);
         data.put("mediaUrl", videoUrl);
-        data.put("thumbnailUrl", null); // TODO: 썸네일 생성시 업로드
+        data.put("thumbnailUrl", thumbnailUrl);
         data.put("description", request.getDescription());
         data.put("hashtags",
                 request.getHashtags() != null ? request.getHashtags() : Collections.emptyList());
@@ -293,7 +308,7 @@ public class ShortsService {
     }
 
     //쇼츠 수정
-    public ShortsResponse updateShorts(String shortsId,ShortsUpdateRequest request,MultipartFile thumbnailFile,
+    public ShortsResponse updateShorts(String shortsId,ShortsUpdateRequest request,MultipartFile videoFile,MultipartFile thumbnailFile,
         String currentUid) throws Exception {
 
         DocumentReference shortsRef =firestore.collection("shorts").document(shortsId);
@@ -310,6 +325,31 @@ public class ShortsService {
                 updates.put("description", request.getDescription());
         if (request.getHashtags() != null)
                 updates.put("hashtags", request.getHashtags());
+
+
+        // 영상 교체 (옵션)
+        if (videoFile != null && !videoFile.isEmpty()) {
+                String oldMediaUrl = snap.getString("mediaUrl");
+                if (oldMediaUrl != null) {
+                        storageService.deleteFile(oldMediaUrl);
+                }
+                String newVideoUrl = storageService.uploadFile(
+                        videoFile,
+                        "shorts/" + currentUid + "/" + shortsId
+                );
+                updates.put("mediaUrl", newVideoUrl);
+
+                // thumbnail이 따로 안 오면 새 영상 기준으로 1프레임 재생성
+                if (thumbnailFile == null || thumbnailFile.isEmpty()) {
+                        byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(videoFile);
+                        String autoThumbUrl = storageService.uploadBytes(
+                                thumbBytes,
+                                "image/jpeg",
+                                "shorts/" + currentUid + "/" + shortsId + "/thumbnail.jpg"
+                        );
+                        updates.put("thumbnailUrl", autoThumbUrl);
+                }
+        }
 
         String thumbnailUrl = snap.getString("thumbnailUrl");
         if (thumbnailFile != null && !thumbnailFile.isEmpty()) {

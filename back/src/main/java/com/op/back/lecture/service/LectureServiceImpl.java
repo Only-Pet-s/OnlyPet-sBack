@@ -194,8 +194,8 @@ public class LectureServiceImpl implements LectureService {
     * 영상 강의 업로드 
     */
     @Override
-    public void uploadVideo(String lectureId,MultipartFile video,String title, String description,
-            int order,boolean preview,String currentUid) {
+    public void uploadVideo(String lectureId, MultipartFile video, MultipartFile thumbnail, String title, 
+                String description, int order, boolean preview, String currentUid) {
         // 강의 테마 존재 확인
         Lecture lecture = lectureRepository.findById(lectureId)
                 .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
@@ -223,6 +223,41 @@ public class LectureServiceImpl implements LectureService {
         }
 
         String videoUrl = "https://" + bucketName + ".s3.amazonaws.com/" + key;
+
+        //썸네일(thumnail) 처리
+        String thumbnailUrl;
+        try {
+                String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
+
+                byte[] thumbBytes;
+                if (thumbnail != null && !thumbnail.isEmpty()) {
+                        thumbBytes = thumbnail.getBytes();
+                        String ct = thumbnail.getContentType() != null ? thumbnail.getContentType() : "image/jpeg";
+                        s3Client.putObject(
+                                software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                                        .bucket(bucketName)
+                                        .key(thumbKey)
+                                        .contentType(ct)
+                                        .build(),
+                                software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbBytes)
+                        );
+        } else {
+                // 영상에서 1프레임 추출 (ffmpeg 필요)
+                thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(video);
+                s3Client.putObject(
+                        software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(thumbKey)
+                                .contentType("image/jpeg")
+                                .build(),
+                        software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbBytes)
+                );
+        }
+
+        thumbnailUrl = "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey;
+        } catch (Exception e) {
+                throw new RuntimeException("강의 썸네일 업로드/생성 실패", e);
+        }
 
         // Firestore에 영상 메타데이터 저장
         LectureVideo lectureVideo = new LectureVideo();
@@ -267,6 +302,7 @@ public class LectureServiceImpl implements LectureService {
                         v.getDescription(),
                         v.getOrder(),
                         v.getVideoUrl(),
+                        v.getThumbnailUrl(),
                         v.isPreview(),
                         purchased || v.isPreview(), // 미리보기는 구매 없이 가능
                         v.isDeleted(),
@@ -274,4 +310,92 @@ public class LectureServiceImpl implements LectureService {
                 ))
                 .toList();
     }
+
+    @Override
+    public void updateVideo(String lectureId,String videoId,String title,String description,Integer order,
+                Boolean preview, org.springframework.web.multipart.MultipartFile video, 
+                org.springframework.web.multipart.MultipartFile thumbnail, String currentUid) {
+
+    Lecture lecture = lectureRepository.findById(lectureId)
+            .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
+
+    if (!lecture.getLecturerUid().equals(currentUid)) {
+        throw new IllegalStateException("본인 강의만 수정 가능");
+    }
+
+    LectureVideo lectureVideo = lectureRepository.findVideoById(lectureId, videoId)
+            .orElseThrow(() -> new IllegalArgumentException("영상 없음"));
+
+    java.util.Map<String, Object> updates = new java.util.HashMap<>();
+
+    // 메타데이터 수정
+    if (title != null) 
+        updates.put("title", title);
+    if (description != null) 
+        updates.put("description", description);
+    if (order != null) 
+        updates.put("order", order);
+    if (preview != null) 
+        updates.put("preview", preview);
+
+    // video 교체 (같은 key로 overwrite)
+    if (video != null && !video.isEmpty()) {
+        String key = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + ".mp4";
+        try {
+            s3Client.putObject(
+                    software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .contentType(video.getContentType())
+                            .build(),
+                    software.amazon.awssdk.core.sync.RequestBody.fromBytes(video.getBytes())
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("강의 영상 업로드 실패", e);
+        }
+        String videoUrl = "https://" + bucketName + ".s3.amazonaws.com/" + key;
+        updates.put("videoUrl", videoUrl);
+
+        // 썸네일이 따로 안 오면 새 영상 기준으로 재생성
+        if (thumbnail == null || thumbnail.isEmpty()) {
+            try {
+                byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(video);
+                String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
+                s3Client.putObject(
+                        software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(thumbKey)
+                                .contentType("image/jpeg")
+                                .build(),
+                        software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbBytes)
+                );
+                updates.put("thumbnailUrl", "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey);
+            } catch (Exception e) {
+                throw new RuntimeException("강의 썸네일 자동 생성 실패", e);
+            }
+        }
+    }
+
+    // thumbnail 교체
+    if (thumbnail != null && !thumbnail.isEmpty()) {
+        try {
+            String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
+            s3Client.putObject(
+                    software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(thumbKey)
+                            .contentType(thumbnail.getContentType() != null ? thumbnail.getContentType() : "image/jpeg")
+                            .build(),
+                    software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbnail.getBytes())
+            );
+            updates.put("thumbnailUrl", "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey);
+        } catch (Exception e) {
+            throw new RuntimeException("강의 썸네일 업로드 실패", e);
+        }
+    }
+
+    if (!updates.isEmpty()) {
+        lectureRepository.updateVideo(lectureId, videoId, updates);
+    }
+}
 }

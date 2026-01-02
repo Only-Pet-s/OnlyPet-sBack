@@ -38,7 +38,7 @@ public class PostService {
 
     //게시글 생성
     public PostResponse createPost(PostCreateRequest request,MultipartFile mediaFile,
-        String uid)
+        MultipartFile thumbnail, String uid)
             throws IOException, ExecutionException, InterruptedException {
 
         String postId = UUID.randomUUID().toString();
@@ -143,7 +143,7 @@ public class PostService {
 
     //게시글 수정
     public PostResponse updatePost(String postId,PostUpdateRequest request,MultipartFile mediaFile,
-            String currentUid) throws Exception {
+            MultipartFile thumbnailFile,String currentUid) throws Exception {
 
         DocumentReference postRef = firestore.collection("posts").document(postId);
         DocumentSnapshot snap = postRef.get().get();
@@ -154,6 +154,36 @@ public class PostService {
 
         Map<String, Object> updates = new HashMap<>();
 
+        if (mediaFile != null && !mediaFile.isEmpty()) {
+            String oldMediaUrl = snap.getString("mediaUrl");
+            if (oldMediaUrl != null) storageService.deleteFile(oldMediaUrl);
+
+            String newMediaUrl = storageService.uploadFile(mediaFile, "posts/" + currentUid + "/" + postId);
+            updates.put("mediaUrl", newMediaUrl);
+
+            // mediaType이 요청에 오면 반영 (안 오면 기존 유지)
+            String mediaType = request.getMediaType() != null ? request.getMediaType() : snap.getString("mediaType");
+            if (mediaType != null) updates.put("mediaType", mediaType);
+
+            // 썸네일이 따로 안 오면 자동 생성
+            if (thumbnailFile == null || thumbnailFile.isEmpty()) {
+                if ("IMAGE".equalsIgnoreCase(mediaType)) {
+                    updates.put("thumbnailUrl", newMediaUrl);
+                } else {
+                    byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(mediaFile);
+                    String autoThumbUrl = storageService.uploadBytes(thumbBytes, "image/jpeg", "posts/" + currentUid + "/" + postId + "/thumbnail.jpg");
+                    updates.put("thumbnailUrl", autoThumbUrl);
+                }
+            }
+        }
+
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+            String oldThumbUrl = snap.getString("thumbnailUrl");
+            if (oldThumbUrl != null) storageService.deleteFile(oldThumbUrl);
+            String newThumbUrl = storageService.uploadFile(thumbnailFile, "posts/" + currentUid + "/" + postId + "/thumbnail.jpg");
+            updates.put("thumbnailUrl", newThumbUrl);
+        }
+
         if (request.getContent() != null)
             updates.put("content", request.getContent());
         if (request.getHashtags() != null)
@@ -161,6 +191,7 @@ public class PostService {
         if (!updates.isEmpty())
             postRef.update(updates).get();
 
+        //createdAt설정
         Instant createdAt = null;
         Timestamp ts = snap.getTimestamp("createdAt");
         if (ts != null) {

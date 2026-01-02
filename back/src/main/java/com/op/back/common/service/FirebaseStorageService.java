@@ -63,4 +63,28 @@ public class FirebaseStorageService {
             System.out.println("Storage delete error: " + e.getMessage());
         }
     }
+
+    //MultipartFile없이 썸네일 업로드 가능하도록 확장
+    public String uploadBytes(byte[] bytes, String contentType, String path) throws IOException {
+        Bucket bucket = StorageClient.getInstance().bucket();
+        String bucketName = bucket.getName();
+
+        String token = UUID.randomUUID().toString();
+
+        BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, path)
+                .setContentType(contentType)
+                .setMetadata(Map.of(
+                        "firebaseStorageDownloadTokens", token
+                ))
+                .build();
+
+        bucket.getStorage().create(blobInfo, bytes);
+
+        return String.format(
+                "https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media&token=%s",
+                bucketName,
+                URLEncoder.encode(path, StandardCharsets.UTF_8),
+                token
+        );
+    }
 }

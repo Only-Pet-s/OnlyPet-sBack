@@ -32,10 +32,11 @@ public class ShortsController {
         @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
         public ResponseEntity<String> create(
                         @RequestPart("data") ShortsCreateRequest request,
-                        @RequestPart("video") MultipartFile video) throws Exception {
+                        @RequestPart("video") MultipartFile video,
+                        @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) throws Exception {
 
                 return ResponseEntity.ok(
-                                shortsService.createShorts(request, video, currentUid()));
+                                shortsService.createShorts(request, video, thumbnail, currentUid()));
         }
 
         // 쇼츠 단일 조회
@@ -114,10 +115,11 @@ public class ShortsController {
         public ResponseEntity<ShortsResponse> updateShorts(
                 @PathVariable String shortsId,
                 @RequestPart("data") ShortsUpdateRequest request,
+                @RequestPart(value = "video", required = false) MultipartFile video,
                 @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
                 ) throws Exception {
                 return ResponseEntity.ok(
-                        shortsService.updateShorts(shortsId, request, thumbnail, currentUid())
+                        shortsService.updateShorts(shortsId, request, video, thumbnail, currentUid())
                 );
         }
 
