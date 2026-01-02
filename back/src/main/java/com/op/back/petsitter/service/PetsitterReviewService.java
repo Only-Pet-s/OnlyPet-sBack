@@ -1,18 +1,19 @@
 package com.op.back.petsitter.service;
 
 import com.google.cloud.Timestamp;
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.QuerySnapshot;
+import com.google.cloud.firestore.*;
+import com.op.back.petsitter.dto.PetsitterReviewResponseDTO;
 import com.op.back.petsitter.dto.ReviewRequestDTO;
 import com.op.back.petsitter.exception.ReviewException;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -26,20 +27,20 @@ public class PetsitterReviewService {
             String uid,
             String petsitterId,
             ReviewRequestDTO req
-    ){
+    ) {
 
         DocumentSnapshot reservation = null;
         try {
             reservation = firestore.collection("reservations")
-                                            .document(req.getReservationId())
-                                            .get().get();
+                    .document(req.getReservationId())
+                    .get().get();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
 
-        if(!reservation.exists()){
+        if (!reservation.exists()) {
             throw new ReviewException("예약이 존재하지 않습니다");
         }
 
@@ -150,9 +151,67 @@ public class PetsitterReviewService {
         }
     }
 
-    private double convertMannerTemp(double currTemp, int rating){
+    // 펫시터가 받은 리뷰 조회
+    public List<PetsitterReviewResponseDTO> getPetsitterReviews(
+            String petsitterId
+    ) {
+        QuerySnapshot snapshots = null;
+        try {
+            snapshots = firestore.collection("petsitters")
+                    .document(petsitterId)
+                    .collection("reviews")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get().get();
+        } catch (Exception e) {
+            throw new ReviewException("리뷰 조회에 실패했습니다.");
+        }
 
-        double ratio = switch(rating){
+        List<PetsitterReviewResponseDTO> list = new ArrayList<>();
+
+        for (DocumentSnapshot doc : snapshots.getDocuments()) {
+            list.add(new PetsitterReviewResponseDTO(
+                    doc.getId(),
+                    doc.getString("userUid"),
+                    doc.getLong("rating").intValue(),
+                    doc.getString("content"),
+                    doc.getTimestamp("createdAt")
+            ));
+        }
+
+        return list;
+    }
+
+
+    public List<PetsitterReviewResponseDTO> getUserReviews(String uid) {
+        QuerySnapshot snapshots = null;
+        try {
+            snapshots = firestore.collection("users")
+                    .document(uid)
+                    .collection("psReviews")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get().get();
+        } catch (Exception e) {
+            throw new ReviewException("리뷰 조회에 실패했습니다.");
+        }
+
+        List<PetsitterReviewResponseDTO> list = new ArrayList<>();
+
+        for (DocumentSnapshot doc : snapshots.getDocuments()) {
+            list.add(new PetsitterReviewResponseDTO(
+                    doc.getId(),
+                    doc.getString("userUid"),
+                    doc.getLong("rating").intValue(),
+                    doc.getString("content"),
+                    doc.getTimestamp("createdAt")
+            ));
+        }
+
+        return list;
+    }
+
+    private double convertMannerTemp(double currTemp, int rating) {
+
+        double ratio = switch (rating) {
             case 5 -> 0.3;
             case 4 -> 0.1;
             case 3 -> 0.0;
