@@ -4,8 +4,10 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
 import com.op.back.common.service.FirebaseStorageService;
+import com.op.back.common.service.FirestoreDeleteUtil;
 import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
+import com.op.back.shorts.dto.ShortsUpdateRequest;
 import com.op.back.shorts.model.Shorts;
 import com.op.back.shorts.search.ShortsSearchRepository;
 import com.op.back.shorts.search.ShortsDocument;
@@ -29,6 +31,7 @@ public class ShortsService {
     private final Firestore firestore;
     private final FirebaseStorageService storageService;
     private final StringRedisTemplate redisTemplate;
+    private final FirestoreDeleteUtil firestoreDeleteUtil;
 
     private static final String SHORTS = "shorts";
     private final ShortsSearchRepository shortsSearchRepository;
@@ -287,6 +290,96 @@ public class ShortsService {
             }
             return null;
         }).get();
+    }
+
+    //쇼츠 수정
+    public ShortsResponse updateShorts(String shortsId,ShortsUpdateRequest request,MultipartFile thumbnailFile,
+        String currentUid) throws Exception {
+
+        DocumentReference shortsRef =firestore.collection("shorts").document(shortsId);
+        DocumentSnapshot snap = shortsRef.get().get();
+        if (!snap.exists())
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        if (!Objects.equals(snap.getString("uid"), currentUid))
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+
+        //Firestore 업데이트
+        Map<String, Object> updates = new HashMap<>();
+
+        if (request.getDescription() != null)
+                updates.put("description", request.getDescription());
+        if (request.getHashtags() != null)
+                updates.put("hashtags", request.getHashtags());
+
+        String thumbnailUrl = snap.getString("thumbnailUrl");
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+                // 기존 썸네일 삭제
+                storageService.deleteFile(thumbnailUrl);
+                String newThumbUrl = storageService.uploadFile(
+                        thumbnailFile,
+                        "shorts/" + currentUid + "/" + shortsId + "/thumbnail"
+                );
+                updates.put("thumbnailUrl", newThumbUrl);
+                thumbnailUrl = newThumbUrl;
+        }
+
+        if (!updates.isEmpty())
+                shortsRef.update(updates).get();
+        //Timestamp → Instant (ES 전용)
+        Timestamp ts = snap.getTimestamp("createdAt");
+        Instant createdAt = null;
+        if (ts != null) {
+                createdAt = Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos());
+        }
+
+        // ES 동기화
+        shortsSearchRepository.save(
+                ShortsDocument.builder()
+                        .id(shortsId)
+                        .uid(snap.getString("uid"))
+                        .description(request.getDescription() != null? 
+                                request.getDescription(): snap.getString("description")
+                        )
+                        .hashtags(
+                                request.getHashtags() != null
+                                        ? request.getHashtags()
+                                        : (List<String>) snap.get("hashtags")
+                        )
+                        .viewCount(
+                                Optional.ofNullable(snap.getLong("viewCount"))
+                                        .orElse(0L).intValue()
+                        )
+                        .createdAt(createdAt)
+                        .build()
+        );
+        return getShorts(shortsId, currentUid);
+    }
+
+    //쇼츠 삭제
+    public void deleteShorts(String shortsId, String currentUid) throws Exception {
+        DocumentReference shortsRef =
+                firestore.collection("shorts").document(shortsId);
+
+        DocumentSnapshot snap = shortsRef.get().get();
+        if (!snap.exists())
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+
+        if (!Objects.equals(snap.getString("uid"), currentUid))
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+
+        // Storage 삭제
+        storageService.deleteFile(snap.getString("mediaUrl"));
+        storageService.deleteFile(snap.getString("thumbnailUrl"));
+
+        // Firestore 하위 컬렉션 + 본문 삭제
+        firestoreDeleteUtil.deleteDocumentWithSubcollections(shortsRef);
+
+        // ES 삭제 (실패해도 전체 흐름 막지 않음)
+        try {
+                shortsSearchRepository.delete(shortsId);
+        } catch (Exception e) {
+                // log only
+        }
     }
 
     /*

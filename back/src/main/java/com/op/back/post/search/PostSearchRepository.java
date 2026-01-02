@@ -49,4 +49,14 @@ public class PostSearchRepository {
             throw new RuntimeException("Post search failed", e);
         }
     }
+
+    public void delete(String postId) {
+        try {
+            client.delete(d -> d
+                .index(INDEX)
+                .id(postId)
+            );
+        } catch (Exception e) {
+        }
+    }
 }

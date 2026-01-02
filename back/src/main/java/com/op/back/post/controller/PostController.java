@@ -2,6 +2,7 @@ package com.op.back.post.controller;
 
 import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
+import com.op.back.post.dto.PostUpdateRequest;
 import com.op.back.post.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -59,6 +60,17 @@ public class PostController {
 
         return ResponseEntity.ok(
                 postService.getPost(postId, currentUid())
+        );
+    }
+
+    //게시글 수정 patch
+    @PatchMapping("/{postId}")
+    public ResponseEntity<PostResponse> updatePost(
+            @PathVariable String postId,
+            @RequestBody PostUpdateRequest request
+    ) throws Exception {
+        return ResponseEntity.ok(
+            postService.updatePost(postId, request, null, currentUid())
         );
     }
 

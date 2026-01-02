@@ -2,6 +2,7 @@ package com.op.back.shorts.controller;
 
 import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
+import com.op.back.shorts.dto.ShortsUpdateRequest;
 import com.op.back.shorts.service.ShortsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -105,5 +106,26 @@ public class ShortsController {
         public List<ShortsResponse> getBookmarkedShorts(@PathVariable String uid)
                 throws Exception {
                 return shortsService.getBookmarkedShorts(uid);
+        }
+
+
+        //업데이트
+        @PatchMapping(value = "/{shortsId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        public ResponseEntity<ShortsResponse> updateShorts(
+                @PathVariable String shortsId,
+                @RequestPart("data") ShortsUpdateRequest request,
+                @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+                ) throws Exception {
+                return ResponseEntity.ok(
+                        shortsService.updateShorts(shortsId, request, thumbnail, currentUid())
+                );
+        }
+
+        //쇼츠 삭제
+        @DeleteMapping("/{shortsId}")
+        public ResponseEntity<Void> deleteShorts(@PathVariable String shortsId)
+                throws Exception {
+        shortsService.deleteShorts(shortsId, currentUid());
+        return ResponseEntity.noContent().build();
         }
 }

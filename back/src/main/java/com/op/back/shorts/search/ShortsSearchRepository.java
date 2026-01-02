@@ -52,4 +52,15 @@ public class ShortsSearchRepository {
             throw new RuntimeException("Shorts search failed", e);
         }
     }
+
+    public void delete(String shortsId) {
+        try {
+            client.delete(d -> d
+                .index(INDEX)
+                .id(shortsId)
+            );
+        } catch (Exception e) {
+            // log only
+        }
+    }
 }
