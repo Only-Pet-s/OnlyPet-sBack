@@ -44,12 +44,30 @@ public class MyPageService {
             throw new AccessDeniedException("접근 권한이 없습니다.");
         }
 
+        long count1 = firestore.collection("posts")
+                .whereEqualTo("uid", targetUid)
+                .get()
+                .get()
+                .size();
+
+        long count2 = firestore.collection("shorts")
+                .whereEqualTo("uid", targetUid)
+                .get()
+                .get()
+                .size();
+
+        long realCount = count1 + count2;
+
+        firestore.collection("users")
+                .document(targetUid)
+                .update("postCount", realCount);
+
         return new MyPageDTO(
                 userDoc.getString("nickname"),
                 userDoc.getString("profileImageUrl"),
                 userDoc.getString("captionTitle"),
                 userDoc.getString("captionContent"),
-                userDoc.getLong("postCount"),
+                realCount,
                 userDoc.getLong("followerCount"),
                 userDoc.getLong("followingCount"),
                 isOwner

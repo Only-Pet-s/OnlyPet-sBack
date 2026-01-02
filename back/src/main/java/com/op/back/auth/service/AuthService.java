@@ -295,9 +295,11 @@ public class AuthService {
         if (file == null || file.isEmpty()) return null;
 
         Bucket bucket = StorageClient.getInstance(firebaseApp).bucket();
-        Blob blob = bucket.create(path, file.getBytes(), file.getContentType());
+        bucket.create(path, file.getBytes(), file.getContentType());
 
-        return "https://storage.googleapis.com/" + bucket.getName() + "/" + blob.getName();
+        return "https://firebasestorage.googleapis.com/v0/b/" + bucket.getName()
+                + "/o/" + URLEncoder.encode(path, "UTF-8")
+                + "?alt=media";
     }
 
     // firebase storage에 기존에 존재하는 파일 삭제

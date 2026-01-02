@@ -18,6 +18,9 @@ public class ReservationRequestDTO {
     private String startTime;
     private String endTime;
 
+    private String phone;
+    private String address;
+
     private String careType; // VISIT / CONSIGN?
     private String petType;  // DOG / CAT / ETC
     private String petName;
