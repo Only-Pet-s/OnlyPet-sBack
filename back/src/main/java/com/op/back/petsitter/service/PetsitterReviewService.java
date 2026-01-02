@@ -30,6 +30,7 @@ public class PetsitterReviewService {
     ) {
 
         DocumentSnapshot reservation = null;
+
         try {
             reservation = firestore.collection("reservations")
                     .document(req.getReservationId())
@@ -90,6 +91,13 @@ public class PetsitterReviewService {
 
                 DocumentSnapshot petsitter = tx.get(petsitterRef).get();
 
+                String reviewId = firestore
+                        .collection("petsitters")
+                        .document(petsitterId)
+                        .collection("reviews")
+                        .document()
+                        .getId();
+
                 double currentTemp =
                         petsitter.contains("mannerTemp")
                                 ? petsitter.getDouble("mannerTemp")
@@ -114,9 +122,10 @@ public class PetsitterReviewService {
 
                 // 5. 리뷰 저장
                 DocumentReference reviewRef =
-                        petsitterRef.collection("reviews").document();
+                        petsitterRef.collection("reviews").document(reviewId);
 
                 tx.set(reviewRef, Map.of(
+                        "reviewId", reviewId,
                         "reservationId", req.getReservationId(),
                         "userUid", uid,
                         "rating", req.getRating(),
@@ -125,9 +134,10 @@ public class PetsitterReviewService {
                 ));
 
                 // 추후 유저별 작성했던 리뷰 조회를 위해 users/psReviews 에도 저장
-                DocumentReference userRef = firestore.collection("users").document(uid).collection("psReviews").document();
+                DocumentReference userRef = firestore.collection("users").document(uid).collection("psReviews").document(reviewId);
 
                 tx.set(userRef, Map.of(
+                        "reviewId", reviewId,
                         "reservationId", req.getReservationId(),
                         "userUid", uid,
                         "rating", req.getRating(),
