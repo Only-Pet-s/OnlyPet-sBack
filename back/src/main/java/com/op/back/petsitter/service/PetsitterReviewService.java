@@ -1,9 +1,168 @@
 package com.op.back.petsitter.service;
 
+import com.google.cloud.Timestamp;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.QuerySnapshot;
+import com.op.back.petsitter.dto.ReviewRequestDTO;
+import com.op.back.petsitter.exception.ReviewException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @RequiredArgsConstructor
 public class PetsitterReviewService {
+
+    private final Firestore firestore;
+
+    public void createReview(
+            String uid,
+            String petsitterId,
+            ReviewRequestDTO req
+    ){
+
+        DocumentSnapshot reservation = null;
+        try {
+            reservation = firestore.collection("reservations")
+                                            .document(req.getReservationId())
+                                            .get().get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        if(!reservation.exists()){
+            throw new ReviewException("예약이 존재하지 않습니다");
+        }
+
+        if (!uid.equals(reservation.getString("userUid"))) {
+            throw new ReviewException("리뷰 작성 권한이 없습니다.");
+        }
+
+        if (!petsitterId.equals(reservation.getString("petsitterId"))) {
+            throw new ReviewException("예약 정보가 일치하지 않습니다.");
+        }
+
+        if (!"RESERVED".equals(reservation.getString("reservationStatus"))
+                || !"COMPLETED".equals(reservation.getString("paymentStatus"))) {
+            throw new ReviewException("리뷰 작성 조건을 만족하지 않습니다.");
+        }
+
+        LocalDate date = LocalDate.parse(reservation.getString("date"));
+        LocalTime endTime = LocalTime.parse(reservation.getString("endTime"));
+
+        if (LocalDateTime.of(date, endTime).isAfter(LocalDateTime.now())) {
+            throw new ReviewException("아직 서비스가 완료되지 않았습니다.");
+        }
+
+        QuerySnapshot exists = null;
+        try {
+            exists = firestore.collection("petsitters")
+                    .document(petsitterId)
+                    .collection("reviews")
+                    .whereEqualTo("reservationId", req.getReservationId())
+                    .get().get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (!exists.isEmpty()) {
+            throw new ReviewException("이미 리뷰를 작성했습니다.");
+        }
+
+        try {
+            firestore.runTransaction(tx -> {
+
+                DocumentReference petsitterRef =
+                        firestore.collection("petsitters")
+                                .document(petsitterId);
+
+                DocumentSnapshot petsitter = tx.get(petsitterRef).get();
+
+                double currentTemp =
+                        petsitter.contains("mannerTemp")
+                                ? petsitter.getDouble("mannerTemp")
+                                : 36.5;
+
+                double newTemp =
+                        convertMannerTemp(currentTemp, req.getRating());
+
+                long reviewCount =
+                        petsitter.contains("reviewCount")
+                                ? petsitter.getLong("reviewCount")
+                                : 0;
+
+                double currentRating =
+                        petsitter.contains("rating")
+                                ? petsitter.getDouble("rating")
+                                : 0.0;
+
+                double newRating =
+                        ((currentRating * reviewCount) + req.getRating())
+                                / (reviewCount + 1);
+
+                // 5. 리뷰 저장
+                DocumentReference reviewRef =
+                        petsitterRef.collection("reviews").document();
+
+                tx.set(reviewRef, Map.of(
+                        "reservationId", req.getReservationId(),
+                        "userUid", uid,
+                        "rating", req.getRating(),
+                        "content", req.getContent(),
+                        "createdAt", Timestamp.now()
+                ));
+
+                // 추후 유저별 작성했던 리뷰 조회를 위해 users/psReviews 에도 저장
+                DocumentReference userRef = firestore.collection("users").document(uid).collection("psReviews").document();
+
+                tx.set(userRef, Map.of(
+                        "reservationId", req.getReservationId(),
+                        "userUid", uid,
+                        "rating", req.getRating(),
+                        "content", req.getContent(),
+                        "createdAt", Timestamp.now()
+                ));
+
+                // 6. 펫시터 통계 업데이트
+                tx.update(petsitterRef,
+                        "mannerTemp", newTemp,
+                        "rating", Math.round(newRating * 10) / 10.0,
+                        "reviewCount", reviewCount + 1
+                );
+
+                return null;
+            }).get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private double convertMannerTemp(double currTemp, int rating){
+
+        double ratio = switch(rating){
+            case 5 -> 0.3;
+            case 4 -> 0.1;
+            case 3 -> 0.0;
+            case 2 -> -0.1;
+            case 1 -> -0.3;
+            default -> 0.0;
+        };
+
+        double result = currTemp + ratio;
+
+        return result;
+    }
 }
