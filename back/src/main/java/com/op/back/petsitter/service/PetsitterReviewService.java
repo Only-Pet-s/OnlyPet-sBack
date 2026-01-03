@@ -4,9 +4,9 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
 import com.op.back.petsitter.dto.PetsitterReviewResponseDTO;
 import com.op.back.petsitter.dto.ReviewRequestDTO;
+import com.op.back.petsitter.dto.ReviewUpdateDTO;
 import com.op.back.petsitter.exception.ReviewException;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -104,7 +104,7 @@ public class PetsitterReviewService {
                                 : 36.5;
 
                 double newTemp =
-                        convertMannerTemp(currentTemp, req.getRating());
+                        currentTemp + ratingTemp(req.getRating());
 
                 long reviewCount =
                         petsitter.contains("reviewCount")
@@ -219,9 +219,100 @@ public class PetsitterReviewService {
         return list;
     }
 
-    private double convertMannerTemp(double currTemp, int rating) {
+    public void updateReview(
+            String uid,
+            String petsitterId,
+            String reviewId,
+            ReviewUpdateDTO req
+    ) {
+        DocumentReference psReviewRef = firestore.collection("petsitters") // 펫시터가 가진 리뷰 레퍼런스
+                .document(petsitterId)
+                .collection("reviews")
+                .document(reviewId);
 
-        double ratio = switch (rating) {
+        DocumentReference userReviewRef= firestore.collection("users")
+                .document(uid)
+                .collection("psReviews")
+                .document(reviewId);
+        try {
+            firestore.runTransaction(tx -> {
+
+                DocumentSnapshot review = tx.get(psReviewRef).get();
+
+                if (!review.exists()) {
+                    throw new ReviewException("리뷰가 존재하지 않습니다.");
+                }
+
+                if (!uid.equals(review.getString("userUid"))) {
+                    throw new ReviewException("리뷰 수정 권한이 없습니다.");
+                }
+
+                int oldRating = review.getLong("rating").intValue();
+                int newRating = req.getRating();
+
+                if (oldRating == newRating &&
+                        req.getContent().equals(review.getString("content"))) {
+                    return null;
+                }
+
+                DocumentReference petsitterRef =
+                        firestore.collection("petsitters")
+                                .document(petsitterId);
+
+                DocumentSnapshot petsitter = tx.get(petsitterRef).get();
+
+                double currentTemp =
+                        petsitter.contains("mannerTemp")
+                                ? petsitter.getDouble("mannerTemp")
+                                : 36.5;
+
+                long reviewCount =
+                        petsitter.getLong("reviewCount");
+
+                double currentAvgRating =
+                        petsitter.getDouble("rating");
+
+                double newAvgRating =
+                        ((currentAvgRating * reviewCount)
+                                - oldRating
+                                + newRating)
+                                / reviewCount;
+
+                double tempDelta =
+                        ratingTemp(newRating)
+                                - ratingTemp(oldRating);
+
+                double newTemp =
+                        Math.max(0, Math.min(100, currentTemp + tempDelta));
+                newTemp = Math.round(newTemp * 10) / 10.0;
+
+                tx.update(psReviewRef,
+                        "rating", newRating,
+                        "content", req.getContent(),
+                        "updatedAt", Timestamp.now()
+                );
+
+                tx.update(userReviewRef,
+                        "rating", newRating,
+                        "content", req.getContent(),
+                        "updatedAt", Timestamp.now()
+                );
+
+                tx.update(petsitterRef,
+                        "rating", Math.round(newAvgRating * 10) / 10.0,
+                        "mannerTemp", newTemp
+                );
+
+                return null;
+            }).get();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private double ratingTemp(int rating) {
+        return switch (rating) {
             case 5 -> 0.3;
             case 4 -> 0.1;
             case 3 -> 0.0;
@@ -229,9 +320,21 @@ public class PetsitterReviewService {
             case 1 -> -0.3;
             default -> 0.0;
         };
-
-        double result = currTemp + ratio;
-
-        return result;
     }
+
+//    private double convertMannerTemp(double currTemp, int rating) {
+//
+//        double ratio = switch (rating) {
+//            case 5 -> 0.3;
+//            case 4 -> 0.1;
+//            case 3 -> 0.0;
+//            case 2 -> -0.1;
+//            case 1 -> -0.3;
+//            default -> 0.0;
+//        };
+//
+//        double result = currTemp + ratio;
+//
+//        return result;
+//    }
 }

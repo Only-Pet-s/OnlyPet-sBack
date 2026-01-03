@@ -3,6 +3,7 @@ package com.op.back.petsitter.controller;
 import com.op.back.auth.util.JwtUtil;
 import com.op.back.petsitter.dto.PetsitterReviewResponseDTO;
 import com.op.back.petsitter.dto.ReviewRequestDTO;
+import com.op.back.petsitter.dto.ReviewUpdateDTO;
 import com.op.back.petsitter.service.PetsitterReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -43,5 +44,17 @@ public class ReviewController {
         String uid = jwtUtil.getUid(authHeader.substring(7));
 
         return ResponseEntity.ok(psReviewService.getUserReviews(uid));
+    }
+
+    @PatchMapping("/{petsitterId}/{reviewId}")
+    public ResponseEntity<Void> updateReview(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String petsitterId,
+            @PathVariable String reviewId,
+            @RequestBody ReviewUpdateDTO req
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        psReviewService.updateReview(uid, petsitterId, reviewId, req);
+        return ResponseEntity.ok().build();
     }
 }
