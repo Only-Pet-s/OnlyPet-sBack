@@ -97,19 +97,6 @@ public class ShortsController {
                 return shortsService.search(q);
         }
 
-         @GetMapping("/{uid}/likes")
-        public List<ShortsResponse> getLikedShorts(@PathVariable String uid)
-                throws Exception {
-                return shortsService.getLikedShorts(uid);
-        }
-
-        @GetMapping("/{uid}/bookmarks")
-        public List<ShortsResponse> getBookmarkedShorts(@PathVariable String uid)
-                throws Exception {
-                return shortsService.getBookmarkedShorts(uid);
-        }
-
-
         //업데이트
         @PatchMapping(value = "/{shortsId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
         public ResponseEntity<ShortsResponse> updateShorts(

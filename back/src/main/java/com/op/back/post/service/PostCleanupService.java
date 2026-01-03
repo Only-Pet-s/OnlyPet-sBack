@@ -18,20 +18,21 @@ import java.util.concurrent.ExecutionException;
 public class PostCleanupService {
     private final Firestore firestore;
     private final FirestoreDeleteUtil firestoreDeleteUtil;
-    private final FirebaseStorageService storageService;
+    private final PostMediaService postMediaService;
+
 
     private static final String USERS_COLLECTION = "users";
 
-    public void cleanupPost(DocumentReference postRef, String postId, String mediaUrl)
+    public void cleanupPost(DocumentReference postRef, String postId)
             throws ExecutionException, InterruptedException {
 
-        // 1. Storage 파일 삭제
-        storageService.deleteFileByUrl(mediaUrl);
+        // 1. media 정리 위임
+        postMediaService.cleanupAllMedia(postRef);
 
-        // 2. Firestore 하위 컬렉션 삭제 (likes, comments, replies, commentLikes 등)
+        // 2. Firestore 문서 + 하위 컬렉션 삭제
         firestoreDeleteUtil.deleteDocumentWithSubcollections(postRef);
 
-        // 3. 모든 user 북마크에서 삭제
+        // 3. user bookmarks / likes 정리
         deleteAllBookmarks(postId);
         deleteAllUserLikes(postId);
     }
