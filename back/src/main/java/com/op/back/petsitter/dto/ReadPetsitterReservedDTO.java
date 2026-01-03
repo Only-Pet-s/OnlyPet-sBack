@@ -12,10 +12,12 @@ public class ReadPetsitterReservedDTO {
     private String userProfileImage;
     private String phone;
     private String address;
+    private String careType;
     private String date;
     private String startTime;
     private String endTime;
     private String petType;
     private String petName;
+    private String requestNote;
     private String reservationStatus;
 }

@@ -1,10 +1,8 @@
 package com.op.back.petsitter.controller;
 
 import com.op.back.auth.util.JwtUtil;
-import com.op.back.petsitter.dto.CancelReservationResponseDTO;
-import com.op.back.petsitter.dto.ReadPetsitterReservedDTO;
-import com.op.back.petsitter.dto.ReadUserReservationDTO;
-import com.op.back.petsitter.dto.ReservationRequestDTO;
+import com.op.back.petsitter.dto.*;
+import com.op.back.petsitter.service.PetsitterService;
 import com.op.back.petsitter.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +18,7 @@ import java.util.Map;
 public class ReservationController {
     private final ReservationService reservationService;
     private final JwtUtil jwtUtil;
+    private final PetsitterService petsitterService;
 
     @PostMapping("/makeReservation")
     public ResponseEntity<?> makeReservation(
@@ -92,4 +91,13 @@ public class ReservationController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/getCount/{petsitterId}")
+    public ResponseEntity<PetsitterReservationCountDTO> getCount(
+            @PathVariable("petsitterId") String petsitterId
+    ){
+
+        return ResponseEntity.ok(
+           reservationService.getReservationCount(petsitterId)
+        );
+    }
 }

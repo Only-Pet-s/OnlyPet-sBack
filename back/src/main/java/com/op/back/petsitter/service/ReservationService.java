@@ -8,10 +8,7 @@ import com.op.back.petsitter.util.PaymentUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -305,12 +302,12 @@ public class ReservationService {
 
     public List<ReadPetsitterReservedDTO> getPetsitterReserved(String petsitterId) {
         DocumentSnapshot petsitter;
-        try{
+        try {
             petsitter = firestore.collection("users").document(petsitterId).get().get();
-            if(!petsitter.getBoolean("petsitter")) {
+            if (!petsitter.getBoolean("petsitter")) {
                 throw new ReservationException("펫시터 권한이 없습니다.");
             }
-        }catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
@@ -346,16 +343,78 @@ public class ReservationService {
                     user.getString("profileImageUrl"),
                     user.getString("phone"),
                     user.getString("address"),
+                    doc.getString("careType"),
                     doc.getString("date"),
                     doc.getString("startTime"),
                     doc.getString("endTime"),
                     doc.getString("petType"),
                     doc.getString("petName"),
+                    doc.getString("requestNote"),
                     doc.getString("reservationStatus")
             ));
         }
 
         return result;
+    }
+
+    public PetsitterReservationCountDTO getReservationCount(String petsitterId) {
+        long total = 0;
+        long completed = 0;
+        long refunded = 0;
+        long canceled = 0;
+        LocalDateTime now = LocalDateTime.now();
+
+        DocumentSnapshot petsitter;
+        try {
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if (!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("해당 펫시터가 존재하지 않습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        QuerySnapshot snapshots;
+        try {
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        for(DocumentSnapshot doc:snapshots.getDocuments()) {
+
+            total++; // 전체 횟수
+
+            String reservationStatus = doc.getString("reservationStatus");
+            String paymentStatus = doc.getString("paymentStatus");
+
+            if("CANCELED".equals(reservationStatus)) {
+                canceled++; // 취소 건수
+            }
+
+            if("REFUNDED".equals(paymentStatus)) {
+                refunded++; // 환불 건수
+            }
+
+            if("RESERVED".equals(reservationStatus) && "COMPLETED".equals(paymentStatus)) { // 예약 상태 + 결제 완료 상태 만족 시
+
+                LocalDate date = LocalDate.parse(doc.getString("date"));
+                LocalTime endTime = LocalTime.parse(doc.getString("endTime"));
+
+                if(LocalDateTime.of(date, endTime).isBefore(now)){ // 해당 예약 날짜와 시간이 지나면 완료 횟수 추가
+                    completed++;
+                }
+            }
+        }
+
+        return new PetsitterReservationCountDTO(
+                total,
+                completed,
+                refunded,
+                canceled
+        );
     }
 
     // db에 들어갈 요일 형식
