@@ -21,5 +21,5 @@ public class ShortsDocument {
     private List<String> hashtags;
 
     private int viewCount;
-    private Instant createdAt;
+    private String createdAt;
 }

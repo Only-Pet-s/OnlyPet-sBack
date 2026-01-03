@@ -5,6 +5,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
 import com.op.back.common.service.FirebaseStorageService;
 import com.op.back.common.service.FirestoreDeleteUtil;
+import com.op.back.common.util.VideoThumbnailUtil;
 import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
 import com.op.back.shorts.dto.ShortsUpdateRequest;
@@ -59,13 +60,22 @@ public class ShortsService {
                         "shorts/" + uid + "/" + shortsId + "/thumbnail"
                 );
         } else {
-                // 서버에서 영상 1프레임 추출 (ffmpeg 필요)
-                byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(videoFile);
-                thumbnailUrl = storageService.uploadBytes(
+                try{
+                        byte[] thumbBytes =
+                        VideoThumbnailUtil.extractJpegBytes(videoFile);
+
+                        thumbnailUrl = storageService.uploadBytes(
                         thumbBytes,
                         "image/jpeg",
                         "shorts/" + uid + "/" + shortsId + "/thumbnail.jpg"
-                );
+                        );
+                }catch (Exception e) {
+                        throw new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "thumbnail generation failed",
+                        e
+                        );
+                }
         }
 
         Map<String, Object> data = new HashMap<>();
@@ -96,7 +106,7 @@ public class ShortsService {
                                         : List.of()
                         )
                         .viewCount(0)
-                        .createdAt(Instant.now())
+                        .createdAt(Instant.now().toString())
                         .build()
         );
         return shortsId;
@@ -331,7 +341,7 @@ public class ShortsService {
         if (videoFile != null && !videoFile.isEmpty()) {
                 String oldMediaUrl = snap.getString("mediaUrl");
                 if (oldMediaUrl != null) {
-                        storageService.deleteFile(oldMediaUrl);
+                        storageService.deleteFileByUrl(oldMediaUrl);
                 }
                 String newVideoUrl = storageService.uploadFile(
                         videoFile,
@@ -354,7 +364,7 @@ public class ShortsService {
         String thumbnailUrl = snap.getString("thumbnailUrl");
         if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
                 // 기존 썸네일 삭제
-                storageService.deleteFile(thumbnailUrl);
+                storageService.deleteFileByUrl(thumbnailUrl);
                 String newThumbUrl = storageService.uploadFile(
                         thumbnailFile,
                         "shorts/" + currentUid + "/" + shortsId + "/thumbnail"
@@ -389,7 +399,7 @@ public class ShortsService {
                                 Optional.ofNullable(snap.getLong("viewCount"))
                                         .orElse(0L).intValue()
                         )
-                        .createdAt(createdAt)
+                        .createdAt(createdAt.toString())
                         .build()
         );
         return getShorts(shortsId, currentUid);
@@ -408,8 +418,8 @@ public class ShortsService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN);
 
         // Storage 삭제
-        storageService.deleteFile(snap.getString("mediaUrl"));
-        storageService.deleteFile(snap.getString("thumbnailUrl"));
+        storageService.deleteFileByUrl(snap.getString("mediaUrl"));
+        storageService.deleteFileByUrl(snap.getString("thumbnailUrl"));
 
         // Firestore 하위 컬렉션 + 본문 삭제
         firestoreDeleteUtil.deleteDocumentWithSubcollections(shortsRef);
@@ -594,7 +604,11 @@ public class ShortsService {
                 .bookmarked(false)
                 .mine(false)
 
-                .createdAt(doc.getCreatedAt())
+                .createdAt(
+                        doc.getCreatedAt() != null
+                    ? Instant.parse(doc.getCreatedAt())
+                    : null
+                )
                 .build();
     }
 

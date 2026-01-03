@@ -156,7 +156,7 @@ public class PostService {
 
         if (mediaFile != null && !mediaFile.isEmpty()) {
             String oldMediaUrl = snap.getString("mediaUrl");
-            if (oldMediaUrl != null) storageService.deleteFile(oldMediaUrl);
+            if (oldMediaUrl != null) storageService.deleteFileByUrl(oldMediaUrl);
 
             String newMediaUrl = storageService.uploadFile(mediaFile, "posts/" + currentUid + "/" + postId);
             updates.put("mediaUrl", newMediaUrl);
@@ -179,7 +179,7 @@ public class PostService {
 
         if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
             String oldThumbUrl = snap.getString("thumbnailUrl");
-            if (oldThumbUrl != null) storageService.deleteFile(oldThumbUrl);
+            if (oldThumbUrl != null) storageService.deleteFileByUrl(oldThumbUrl);
             String newThumbUrl = storageService.uploadFile(thumbnailFile, "posts/" + currentUid + "/" + postId + "/thumbnail.jpg");
             updates.put("thumbnailUrl", newThumbUrl);
         }

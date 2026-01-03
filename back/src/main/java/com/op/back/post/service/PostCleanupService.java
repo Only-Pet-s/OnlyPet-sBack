@@ -26,7 +26,7 @@ public class PostCleanupService {
             throws ExecutionException, InterruptedException {
 
         // 1. Storage 파일 삭제
-        storageService.deleteFile(mediaUrl);
+        storageService.deleteFileByUrl(mediaUrl);
 
         // 2. Firestore 하위 컬렉션 삭제 (likes, comments, replies, commentLikes 등)
         firestoreDeleteUtil.deleteDocumentWithSubcollections(postRef);

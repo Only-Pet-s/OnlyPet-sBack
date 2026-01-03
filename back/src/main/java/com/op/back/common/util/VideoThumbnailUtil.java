@@ -2,8 +2,10 @@ package com.op.back.common.util;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 
 /**
@@ -16,41 +18,46 @@ public class VideoThumbnailUtil {
 
     private VideoThumbnailUtil() {}
 
-    public static byte[] extractJpegBytes(MultipartFile videoFile) throws IOException {
-        File tempVideo = Files.createTempFile("video_", ".tmp").toFile();
-        File tempThumb = Files.createTempFile("thumb_", ".jpg").toFile();
+    public static byte[] extractJpegBytes(MultipartFile video) throws Exception {
+        // 임시 영상 파일
+        File tempVideo = File.createTempFile("video-", ".mp4");
+        video.transferTo(tempVideo);
 
-        try {
-            videoFile.transferTo(tempVideo);
+        // 임시 썸네일 파일 (확장자 중요)
+        File tempImage = File.createTempFile("thumb-", ".jpg");
 
-            // 1초 지점 1프레임 (영상이 짧으면 -ss 0도 가능하지만, 실무에서 1초가 더 안정적)
-            ProcessBuilder pb = new ProcessBuilder(
-                    "ffmpeg",
-                    "-y",
-                    "-i", tempVideo.getAbsolutePath(),
-                    "-ss", "00:00:01",
-                    "-vframes", "1",
-                    "-q:v", "2",
-                    tempThumb.getAbsolutePath()
-            );
-            pb.redirectErrorStream(true);
+        ProcessBuilder pb = new ProcessBuilder(
+            "ffmpeg",
+            "-y",
+            "-i", tempVideo.getAbsolutePath(),
+            "-ss", "00:00:01",
+            "-vframes", "1",
+            tempImage.getAbsolutePath()   //반드시 .jpg
+        );
 
-            Process p = pb.start();
-            try {
-                int exit = p.waitFor();
-                if (exit != 0 || !tempThumb.exists() || tempThumb.length() == 0) {
-                    throw new IllegalStateException("썸네일 자동 생성 실패: ffmpeg 실행 결과가 비정상입니다. (서버에 ffmpeg 설치/PATH 확인 필요)");
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new IllegalStateException("썸네일 생성 중단", e);
+        //stdout + stderr 합치기 (블로킹 방지)
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+
+        //ffmpeg 출력 소비 (안 하면 멈춤)
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(process.getInputStream()))) {
+            while (br.readLine() != null) {
+                // 로그 소비만 하면 됨
             }
-
-            return Files.readAllBytes(tempThumb.toPath());
-        } finally {
-            // best-effort cleanup
-            if (tempVideo.exists()) tempVideo.delete();
-            if (tempThumb.exists()) tempThumb.delete();
         }
+
+        int exitCode = process.waitFor();
+        if (exitCode != 0) {
+            throw new RuntimeException("ffmpeg failed, exitCode=" + exitCode);
+        }
+
+        byte[] bytes = Files.readAllBytes(tempImage.toPath());
+
+        //임시 파일 정리
+        tempVideo.delete();
+        tempImage.delete();
+
+        return bytes;
     }
 }
