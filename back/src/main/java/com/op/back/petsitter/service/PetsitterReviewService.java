@@ -230,7 +230,7 @@ public class PetsitterReviewService {
                 .collection("reviews")
                 .document(reviewId);
 
-        DocumentReference userReviewRef= firestore.collection("users")
+        DocumentReference userReviewRef = firestore.collection("users")
                 .document(uid)
                 .collection("psReviews")
                 .document(reviewId);
@@ -306,6 +306,72 @@ public class PetsitterReviewService {
                 return null;
             }).get();
 
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public void deleteReview(String uid, String petsitterId, String reviewId) {
+
+        DocumentReference psReviewRef = firestore.collection("petsitters")
+                .document(petsitterId)
+                .collection("reviews")
+                .document(reviewId);
+
+        DocumentReference userReviewRef = firestore.collection("users")
+                .document(uid)
+                .collection("psReviews")
+                .document(reviewId);
+
+        try {
+            firestore.runTransaction(tx -> {
+                DocumentSnapshot review = tx.get(psReviewRef).get();
+
+                if (!review.exists()) {
+                    throw new ReviewException("리뷰가 존재하지 않습니다.");
+                }
+
+                if (!uid.equals(review.getString("userUid"))) {
+                    throw new ReviewException("리뷰 삭제 권한이 없습니다.");
+                }
+
+                int rating = review.getLong("rating").intValue();
+
+                DocumentReference petsitterRef = firestore.collection("petsitters")
+                        .document(petsitterId);
+
+                DocumentSnapshot petsitter = tx.get(petsitterRef).get();
+
+                long reviewCount = petsitter.getLong("reviewCount");
+
+                if (reviewCount <= 1) {
+                    tx.update(petsitterRef,
+                            "reviewCount", reviewCount - 1,
+                            "rating", 0.0,
+                            "mannerTemp", 36.5);
+                } else {
+                    double currAvgRating = petsitter.getDouble("rating");
+                    double currTemp = petsitter.getDouble("mannerTemp");
+
+                    double newAvgRating = ((currAvgRating * reviewCount) - rating) / (reviewCount - 1); // 평점 다시 계산
+                    double newTemp = currTemp + ratingTemp(rating);
+
+                    newTemp = Math.max(0, Math.min(100, newTemp));
+                    newTemp = Math.round(newTemp * 10) / 10.0;
+
+                    tx.update(petsitterRef,
+                            "reviewCount", reviewCount - 1,
+                            "rating", Math.round(newAvgRating * 10) / 10.0,
+                            "mannerTemp", newTemp
+                    );
+                }
+
+                tx.delete(psReviewRef);
+                tx.delete(userReviewRef);
+
+                return null;
+            }).get();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

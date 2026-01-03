@@ -57,4 +57,15 @@ public class ReviewController {
         psReviewService.updateReview(uid, petsitterId, reviewId, req);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/{petsitterId}/{reviewId}")
+    public ResponseEntity<Void> deleteReview(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String petsitterId,
+            @PathVariable String reviewId
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        psReviewService.deleteReview(uid, petsitterId, reviewId);
+        return ResponseEntity.ok().build();
+    }
 }
