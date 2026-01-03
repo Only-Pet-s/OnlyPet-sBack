@@ -3,11 +3,14 @@ package com.op.back.post.service;
 import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
 import com.op.back.post.dto.PostUpdateRequest;
+import com.op.back.post.search.PostSearchRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -24,6 +27,7 @@ public class PostService {
     private final PostQueryService postQueryService;
     private final PostReactionService postReactionService;
     private final PostSearchService postSearchService;
+    private final PostSearchRepository postSearchRepository;
 
     // 게시글 생성
     public PostResponse createPost(PostCreateRequest request, List<MultipartFile> mediaFiles, String uid)
@@ -88,7 +92,25 @@ public class PostService {
     /*
         엘라스틱 서치 기반 검색
     */
-    public List<PostResponse> search(String q) {
-        return postSearchService.search(q);
+    // public List<PostResponse> search(String q) {
+    //     return postSearchService.search(q);
+    // }
+
+    public List<PostResponse> search(String keyword, int size, String currentUid)
+        throws ExecutionException, InterruptedException {
+        List<String> ids =
+                postSearchRepository.searchPostIds(keyword, size);
+
+        if (ids.isEmpty()) 
+            return List.of();
+
+        List<PostResponse> result = new ArrayList<>();
+        for (String postId : ids) {
+            PostResponse response =
+                    postQueryService.getPost(postId, currentUid);
+            result.add(response);
+        }
+        return result;
     }
+    
 }

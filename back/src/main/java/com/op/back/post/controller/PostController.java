@@ -120,9 +120,19 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
-    //검색 [엘라스틱]
+    // //검색 [엘라스틱 참고 & firestore]
+    // @GetMapping("/search")
+    // public List<PostResponse> search(@RequestParam String q) {
+    //     return postService.search(q);
+    // }
+
+    //서치 [ES전용]
     @GetMapping("/search")
-    public List<PostResponse> search(@RequestParam String q) {
-        return postService.search(q);
+    public List<PostResponse> search(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "10") int size
+    ) throws ExecutionException, InterruptedException {
+
+        return postService.search(q, size, currentUid());
     }
 }
