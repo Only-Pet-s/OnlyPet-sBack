@@ -5,9 +5,11 @@ import com.google.cloud.firestore.*;
 import com.google.cloud.storage.Bucket;
 import com.google.firebase.cloud.StorageClient;
 import com.op.back.myPage.dto.MyPageDTO;
+import com.op.back.myPage.dto.MyPageLikeDTO;
 import com.op.back.myPage.dto.MyPagePostDTO;
 import com.op.back.myPage.dto.MyPageShortDTO;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,9 +17,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -331,6 +331,96 @@ public class MyPageService {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public List<MyPageLikeDTO> getLikedItems(String uid) throws Exception {
+
+        List<MyPageLikeDTO> result = new ArrayList<>();
+
+        // 좋아요한 posts
+        QuerySnapshot likedPosts = firestore
+                .collection("users").document(uid)
+                .collection("likes").document("posts")
+                .collection("items")
+                .get().get();
+
+        result.addAll(
+                fetchItems(
+                        likedPosts,
+                        "POST",
+                        "posts"
+                )
+        );
+
+        // 좋아요한 shorts
+        QuerySnapshot likedShorts = firestore
+                .collection("users").document(uid)
+                .collection("likes").document("shorts")
+                .collection("items")
+                .get().get();
+
+        result.addAll(
+                fetchItems(
+                        likedShorts,
+                        "SHORT",
+                        "shorts"
+                )
+        );
+
+        // likedAt 기준 최신순 정렬
+        result.sort(
+                Comparator.comparing(MyPageLikeDTO::getLikedAt).reversed()
+        );
+
+        return result;
+    }
+
+    private List<MyPageLikeDTO> fetchItems(
+            QuerySnapshot likeSnapshot,
+            String type,
+            String collectionName
+    ) throws Exception {
+
+        List<MyPageLikeDTO> items = new ArrayList<>();
+
+        List<String> ids = likeSnapshot.getDocuments()
+                .stream()
+                .map(DocumentSnapshot::getId)
+                .toList();
+
+        if (ids.isEmpty()) return items;
+
+        for (int i = 0; i < ids.size(); i += 10) {
+            List<String> batch = ids.subList(
+                    i,
+                    Math.min(i + 10, ids.size())
+            );
+
+            QuerySnapshot snapshot = firestore
+                    .collection(collectionName)
+                    .whereIn(FieldPath.documentId(), batch)
+                    .get().get();
+
+            for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                items.add(
+                        new MyPageLikeDTO(
+                                type,
+                                doc.getId(),
+                                doc.getString("mediaType"),
+                                doc.getString("mediaUrl"),
+                                likeSnapshot
+                                        .getDocuments()
+                                        .stream()
+                                        .filter(l -> l.getId().equals(doc.getId()))
+                                        .findFirst()
+                                        .get()
+                                        .getTimestamp("likedAt")
+                                        .toString()
+                        )
+                );
+            }
+        }
+        return items;
     }
 }
 

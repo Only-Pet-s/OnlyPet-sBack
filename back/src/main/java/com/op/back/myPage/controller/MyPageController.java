@@ -6,6 +6,7 @@ import com.op.back.myPage.dto.*;
 import com.op.back.myPage.service.MyPageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,6 +56,24 @@ public class MyPageController {
                 myPageService.getMyShorts(uid)
         );
     }
+
+    @GetMapping("/{uid}/liked")
+    public ResponseEntity<List<MyPageLikeDTO>> getLikedItems(
+            @PathVariable String uid,
+            @RequestHeader("Authorization") String authHeader
+    ) throws Exception {
+
+        String loginUid = jwtUtil.getUid(authHeader.substring(7));
+
+        if (!uid.equals(loginUid)) {
+            throw new AccessDeniedException("본인만 조회 가능합니다.");
+        }
+
+        return ResponseEntity.ok(
+                myPageService.getLikedItems(uid)
+        );
+    }
+
 
     // 공개 범위 변경, 로그인 uid == uid
     @PatchMapping("/pageVisible")
