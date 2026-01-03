@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  back:
+    build: .
+    container_name: onlypets-back
+    ports:
+      - "8080:8080"
+    depends_on:
+      - elasticsearch
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: kibana
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
