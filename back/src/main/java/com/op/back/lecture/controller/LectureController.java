@@ -35,13 +35,14 @@ public class LectureController {
     public void uploadVideo(
             @PathVariable String lectureId,
             @RequestParam("video") MultipartFile video,
+            @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestParam String title,
             @RequestParam String description,
             @RequestParam int order,
             @RequestParam(defaultValue = "false") boolean preview
     ) {
         lectureService.uploadVideo(
-                lectureId, video, title, description, order, preview, currentUid()
+                lectureId, video, thumbnail, title, description, order, preview, currentUid()
         );
     }
 

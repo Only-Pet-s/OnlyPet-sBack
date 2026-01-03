@@ -2,6 +2,7 @@ package com.op.back.post.controller;
 
 import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
+import com.op.back.post.dto.PostUpdateRequest;
 import com.op.back.post.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -33,11 +34,13 @@ public class PostController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
             @RequestPart("data") PostCreateRequest request,
-            @RequestPart("media") MultipartFile media
+            @RequestPart("media") MultipartFile media,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+
     ) throws Exception {
 
         return ResponseEntity.ok(
-                postService.createPost(request, media, currentUid())
+                postService.createPost(request, media, thumbnail, currentUid())
         );
     }
 
@@ -59,6 +62,19 @@ public class PostController {
 
         return ResponseEntity.ok(
                 postService.getPost(postId, currentUid())
+        );
+    }
+
+    //게시글 수정 patch (multipart: media/thumbnail 교체 가능)
+    @PatchMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PostResponse> updatePostMultipart(
+            @PathVariable String postId,
+            @RequestPart("data") PostUpdateRequest request,
+            @RequestPart(value = "media", required = false) MultipartFile media,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+    ) throws Exception {
+        return ResponseEntity.ok(
+                postService.updatePost(postId, request, media, thumbnail, currentUid())
         );
     }
 

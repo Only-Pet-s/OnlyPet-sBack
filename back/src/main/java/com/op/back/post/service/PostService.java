@@ -9,6 +9,7 @@ import com.op.back.comment.dto.CommentResponse;
 import com.op.back.common.service.FirebaseStorageService;
 import com.op.back.post.dto.PostCreateRequest;
 import com.op.back.post.dto.PostResponse;
+import com.op.back.post.dto.PostUpdateRequest;
 import com.op.back.post.model.Post;
 import com.op.back.post.search.PostDocument;
 import com.op.back.post.search.PostSearchRepository;
@@ -37,7 +38,7 @@ public class PostService {
 
     //게시글 생성
     public PostResponse createPost(PostCreateRequest request,MultipartFile mediaFile,
-        String uid)
+        MultipartFile thumbnail, String uid)
             throws IOException, ExecutionException, InterruptedException {
 
         String postId = UUID.randomUUID().toString();
@@ -77,7 +78,7 @@ public class PostService {
                     .mediaType(request.getMediaType())
                     .likeCount(0)
                     .commentCount(0)
-                    .createdAt(Instant.now().toString())
+                    .createdAt(Instant.now())
                     .build()
     );
 
@@ -140,6 +141,81 @@ public class PostService {
         );
     }
 
+    //게시글 수정
+    public PostResponse updatePost(String postId,PostUpdateRequest request,MultipartFile mediaFile,
+            MultipartFile thumbnailFile,String currentUid) throws Exception {
+
+        DocumentReference postRef = firestore.collection("posts").document(postId);
+        DocumentSnapshot snap = postRef.get().get();
+        if (!snap.exists())
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        if (!Objects.equals(snap.getString("uid"), currentUid))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+
+        Map<String, Object> updates = new HashMap<>();
+
+        if (mediaFile != null && !mediaFile.isEmpty()) {
+            String oldMediaUrl = snap.getString("mediaUrl");
+            if (oldMediaUrl != null) storageService.deleteFileByUrl(oldMediaUrl);
+
+            String newMediaUrl = storageService.uploadFile(mediaFile, "posts/" + currentUid + "/" + postId);
+            updates.put("mediaUrl", newMediaUrl);
+
+            // mediaType이 요청에 오면 반영 (안 오면 기존 유지)
+            String mediaType = request.getMediaType() != null ? request.getMediaType() : snap.getString("mediaType");
+            if (mediaType != null) updates.put("mediaType", mediaType);
+
+            // 썸네일이 따로 안 오면 자동 생성
+            if (thumbnailFile == null || thumbnailFile.isEmpty()) {
+                if ("IMAGE".equalsIgnoreCase(mediaType)) {
+                    updates.put("thumbnailUrl", newMediaUrl);
+                } else {
+                    byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(mediaFile);
+                    String autoThumbUrl = storageService.uploadBytes(thumbBytes, "image/jpeg", "posts/" + currentUid + "/" + postId + "/thumbnail.jpg");
+                    updates.put("thumbnailUrl", autoThumbUrl);
+                }
+            }
+        }
+
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+            String oldThumbUrl = snap.getString("thumbnailUrl");
+            if (oldThumbUrl != null) storageService.deleteFileByUrl(oldThumbUrl);
+            String newThumbUrl = storageService.uploadFile(thumbnailFile, "posts/" + currentUid + "/" + postId + "/thumbnail.jpg");
+            updates.put("thumbnailUrl", newThumbUrl);
+        }
+
+        if (request.getContent() != null)
+            updates.put("content", request.getContent());
+        if (request.getHashtags() != null)
+            updates.put("hashtags", request.getHashtags());
+        if (!updates.isEmpty())
+            postRef.update(updates).get();
+
+        //createdAt설정
+        Instant createdAt = null;
+        Timestamp ts = snap.getTimestamp("createdAt");
+        if (ts != null) {
+            createdAt = Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos());
+        }
+
+        // ES 동기화
+        postSearchRepository.save(
+            PostDocument.builder()
+                .id(postId)
+                .uid(currentUid)
+                .content(request.getContent() != null? request.getContent(): snap.getString("content"))
+                .hashtags(request.getHashtags() != null? request.getHashtags(): (List<String>) snap.get("hashtags"))
+                .mediaType(snap.getString("mediaType"))
+                .likeCount(Optional.ofNullable(snap.getLong("likeCount")).orElse(0L).intValue())
+                .commentCount(Optional.ofNullable(snap.getLong("commentCount")).orElse(0L).intValue())
+                .createdAt(createdAt)
+                .build()
+        );
+
+        return getPost(postId, currentUid);
+    }
+
+
     //게시글 삭제(only owner)
     public void deletePost(String postId, String currentUid)
             throws ExecutionException, InterruptedException {
@@ -158,6 +234,13 @@ public class PostService {
 
         // 삭제는 모두 CleanupService가 처리
         cleanupService.cleanupPost(postRef, postId, mediaUrl);
+        
+        //ES 삭제
+        try {
+            postSearchRepository.delete(postId);
+        } catch (Exception e) {
+            // log.warn("ES delete failed", e);
+        }
     }
 
     //좋아요 추가
@@ -407,9 +490,7 @@ public class PostService {
      * Elasticsearch 검색 결과 → PostResponse 변환
      * (Firestore 조회 안 함, 검색 전용)
      */
-    private PostResponse toSearchResponse(
-            com.op.back.post.search.PostDocument doc
-    ) {
+    private PostResponse toSearchResponse(com.op.back.post.search.PostDocument doc) {
         return PostResponse.builder()
                 .id(doc.getId())
                 .uid(doc.getUid())
@@ -423,7 +504,7 @@ public class PostService {
                 .liked(false)
                 .bookmarked(false)
                 .mine(false)
-                .createdAt(Instant.parse(doc.getCreatedAt()))
+                .createdAt(doc.getCreatedAt())
                 .build();
     }
 

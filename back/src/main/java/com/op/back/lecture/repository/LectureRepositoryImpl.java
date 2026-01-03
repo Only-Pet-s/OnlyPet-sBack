@@ -88,7 +88,6 @@ public class LectureRepositoryImpl implements LectureRepository {
         }
     }
 
-
     @Override
     public void saveVideo(String lectureId, LectureVideo video) {
         try {
@@ -103,7 +102,6 @@ public class LectureRepositoryImpl implements LectureRepository {
         }
     }
 
-
     @Override
     public void incrementVideoCount(String lectureId) {
         try {
@@ -113,6 +111,36 @@ public class LectureRepositoryImpl implements LectureRepository {
                     .get();
         } catch (Exception e) {
             throw new RuntimeException("videoCount 증가 실패", e);
+        }
+    }
+
+    @Override
+    public Optional<LectureVideo> findVideoById(String lectureId, String videoId) {
+        try {
+            var doc = firestore.collection("lectures")
+                    .document(lectureId)
+                    .collection("videos")
+                    .document(videoId)
+                    .get()
+                    .get();
+            if (!doc.exists()) return Optional.empty();
+            return Optional.ofNullable(doc.toObject(LectureVideo.class));
+        } catch (Exception e) {
+            throw new RuntimeException("영상 조회 실패", e);
+        }
+    }
+
+    @Override
+    public void updateVideo(String lectureId, String videoId, java.util.Map<String, Object> updates) {
+        try {
+            firestore.collection("lectures")
+                    .document(lectureId)
+                    .collection("videos")
+                    .document(videoId)
+                    .update(updates)
+                    .get();
+        } catch (Exception e) {
+            throw new RuntimeException("영상 수정 실패", e);
         }
     }
 }

@@ -9,6 +9,7 @@ public record LectureVideoResponse(
         String description,
         int order,
         String videoUrl,
+        String thumbnailUrl,
         boolean preview,
         boolean purchased,
         boolean deleted,

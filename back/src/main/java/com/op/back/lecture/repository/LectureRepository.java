@@ -14,4 +14,7 @@ public interface LectureRepository {
     List<LectureVideo> findVideosByLectureId(String lectureId);
     void saveVideo(String lectureId, LectureVideo video);
     void incrementVideoCount(String lectureId);
+
+    Optional<LectureVideo> findVideoById(String lectureId, String videoId);
+    void updateVideo(String lectureId, String videoId, java.util.Map<String, Object> updates);
 }

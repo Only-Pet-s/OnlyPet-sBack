@@ -1,4 +1,5 @@
 package com.op.back.post.search;
+import java.time.Instant;
 import java.util.List;
 
 
@@ -22,5 +23,5 @@ public class PostDocument {
     private int likeCount;
     private int commentCount;
 
-    private String createdAt;
+    private Instant createdAt;
 }
