@@ -120,4 +120,24 @@ public class ReservationController {
                 reservationService.getScheduleWeek(uid)
         );
     }
+
+    @PostMapping("/accept/{reservationId}")
+    public ResponseEntity<Void> acceptReservation(
+        @RequestHeader("Authorization") String authHeader,
+        @PathVariable String reservationId
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        reservationService.acceptReservation(uid, reservationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reject/{reservationId}")
+    public ResponseEntity<Void> rejectReservation(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String reservationId
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        reservationService.rejectReservation(uid, reservationId);
+        return ResponseEntity.ok().build();
+    }
 }
