@@ -417,6 +417,54 @@ public class ReservationService {
         );
     }
 
+    public PetsitterRevenueDTO getTotalRevenue(String petsitterId){
+        DocumentSnapshot petsitter;
+
+        try {
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if (!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("펫시터 권한이 없습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        QuerySnapshot snapshots;
+
+        try{
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .whereEqualTo("paymentStatus", "COMPLETED")
+                    .get().get();
+        }catch(Exception e){
+            throw new RuntimeException("수익 조회에 실패하였습니다.", e);
+        }
+
+        long totalRevenue = 0;
+
+        for(DocumentSnapshot doc:snapshots.getDocuments()){
+            String reservationStatus = doc.getString("reservationStatus");
+            String paymentStatus = doc.getString("paymentStatus");
+            LocalDate date = LocalDate.parse(doc.getString("date"));
+            LocalTime endTime = LocalTime.parse(doc.getString("endTime"));
+
+            if("CANCELED".equals(reservationStatus)) {
+                continue;
+            }
+
+            Long price = doc.getLong("price");
+            if(price != null){
+                if ("RESERVED".equals(reservationStatus)
+                        && "COMPLETED".equals(paymentStatus)
+                        && LocalDateTime.of(date, endTime).isBefore(LocalDateTime.now())) {
+                    totalRevenue += price;
+                }
+            }
+        }
+
+        return new PetsitterRevenueDTO(totalRevenue);
+    }
+
     // db에 들어갈 요일 형식
     private String toShortDay(DayOfWeek dayOfWeek) {
         return dayOfWeek.name().substring(0, 3); // MONDAY -> MON

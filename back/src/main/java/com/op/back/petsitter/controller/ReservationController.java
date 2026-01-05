@@ -100,4 +100,14 @@ public class ReservationController {
            reservationService.getReservationCount(petsitterId)
         );
     }
+
+    @GetMapping("/revenue")
+    public ResponseEntity<PetsitterRevenueDTO> getRevenue(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        return ResponseEntity.ok(
+            reservationService.getTotalRevenue(uid)
+        );
+    }
 }
