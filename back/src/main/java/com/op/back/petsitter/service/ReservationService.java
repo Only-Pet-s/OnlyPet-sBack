@@ -465,6 +465,76 @@ public class ReservationService {
         return new PetsitterRevenueDTO(totalRevenue);
     }
 
+    public ScheduleWeekDTO getScheduleWeek(String petsitterId) {
+        DocumentSnapshot petsitter;
+
+        try {
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if (!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("펫시터 권한이 없습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startOfWeek = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endOfWeek = today.plusDays(6);
+
+        Map<DayOfWeek, ScheduleDayDTO> schedule = new HashMap<>();
+        for(DayOfWeek day : DayOfWeek.values()){
+            schedule.put(day, new ScheduleDayDTO(0,0));
+        }
+
+        QuerySnapshot snapshots;
+        try{
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .whereIn("reservationStatus", List.of("PENDING", "RESERVED"))
+                    .get().get();
+        }catch(Exception e){
+            throw new RuntimeException("예약 조회에 실패하였습니다", e);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for(DocumentSnapshot doc:snapshots.getDocuments()){
+
+            String date1 = doc.getString("date");
+            String endTime1 = doc.getString("endTime");
+            String reservationStatus = doc.getString("reservationStatus");
+            String paymentStatus = doc.getString("paymentStatus");
+
+            if(date1 == null || endTime1 == null) continue;
+
+            LocalDate date = LocalDate.parse(date1);
+
+            if (date.isBefore(startOfWeek) || date.isAfter(endOfWeek)) {
+                continue;
+            }
+
+            DayOfWeek day = date.getDayOfWeek();
+            ScheduleDayDTO prev = schedule.get(day);
+
+            long total = prev.getTotal() + 1;
+            long completed = prev.getCompleted();
+
+            // 완료 조건
+            if ("RESERVED".equals(reservationStatus)
+                    && "COMPLETED".equals(paymentStatus)) {
+
+                LocalTime endTime = LocalTime.parse(endTime1);
+                if (LocalDateTime.of(date, endTime).isBefore(now)) {
+                    completed++;
+                }
+            }
+
+            schedule.put(day, new ScheduleDayDTO(completed, total));
+        }
+
+        return new ScheduleWeekDTO(schedule);
+    }
+
     // db에 들어갈 요일 형식
     private String toShortDay(DayOfWeek dayOfWeek) {
         return dayOfWeek.name().substring(0, 3); // MONDAY -> MON

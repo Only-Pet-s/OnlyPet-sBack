@@ -110,4 +110,14 @@ public class ReservationController {
             reservationService.getTotalRevenue(uid)
         );
     }
+
+    @GetMapping("/schedule")
+    public ResponseEntity<ScheduleWeekDTO> getWeekSchedule(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        return ResponseEntity.ok(
+                reservationService.getScheduleWeek(uid)
+        );
+    }
 }
