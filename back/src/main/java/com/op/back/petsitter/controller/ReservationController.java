@@ -1,10 +1,8 @@
 package com.op.back.petsitter.controller;
 
 import com.op.back.auth.util.JwtUtil;
-import com.op.back.petsitter.dto.CancelReservationResponseDTO;
-import com.op.back.petsitter.dto.ReadPetsitterReservedDTO;
-import com.op.back.petsitter.dto.ReadUserReservationDTO;
-import com.op.back.petsitter.dto.ReservationRequestDTO;
+import com.op.back.petsitter.dto.*;
+import com.op.back.petsitter.service.PetsitterService;
 import com.op.back.petsitter.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +18,7 @@ import java.util.Map;
 public class ReservationController {
     private final ReservationService reservationService;
     private final JwtUtil jwtUtil;
+    private final PetsitterService petsitterService;
 
     @PostMapping("/makeReservation")
     public ResponseEntity<?> makeReservation(
@@ -92,4 +91,53 @@ public class ReservationController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/getCount/{petsitterId}")
+    public ResponseEntity<PetsitterReservationCountDTO> getCount(
+            @PathVariable("petsitterId") String petsitterId
+    ){
+
+        return ResponseEntity.ok(
+           reservationService.getReservationCount(petsitterId)
+        );
+    }
+
+    @GetMapping("/revenue")
+    public ResponseEntity<PetsitterRevenueDTO> getRevenue(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        return ResponseEntity.ok(
+            reservationService.getTotalRevenue(uid)
+        );
+    }
+
+    @GetMapping("/schedule")
+    public ResponseEntity<ScheduleWeekDTO> getWeekSchedule(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        return ResponseEntity.ok(
+                reservationService.getScheduleWeek(uid)
+        );
+    }
+
+    @PostMapping("/accept/{reservationId}")
+    public ResponseEntity<Void> acceptReservation(
+        @RequestHeader("Authorization") String authHeader,
+        @PathVariable String reservationId
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        reservationService.acceptReservation(uid, reservationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reject/{reservationId}")
+    public ResponseEntity<Void> rejectReservation(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable String reservationId
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        reservationService.rejectReservation(uid, reservationId);
+        return ResponseEntity.ok().build();
+    }
 }

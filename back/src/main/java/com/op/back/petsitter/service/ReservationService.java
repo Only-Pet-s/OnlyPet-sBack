@@ -8,10 +8,7 @@ import com.op.back.petsitter.util.PaymentUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,7 +31,7 @@ public class ReservationService {
                                 firestore.collection("reservations")
                                         .whereEqualTo("petsitterId", req.getPetsitterId())
                                         .whereEqualTo("date", req.getDate())
-                                        .whereIn("reservationStatus", List.of("HOLD", "RESERVED"))
+                                        .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "ACCEPTED"))
                         ).get();
 
                 LocalDate today = LocalDate.now();
@@ -182,7 +179,7 @@ public class ReservationService {
             reservations = firestore.collection("reservations")
                     .whereEqualTo("petsitterId", petsitterId)
                     .whereEqualTo("date", date)
-                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED"))
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "ACCEPTED"))
                     .get().get();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -267,7 +264,7 @@ public class ReservationService {
         try {
             snapshots = firestore.collection("reservations")
                     .whereEqualTo("userUid", uid)
-                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "COMPLETED", "CANCELED", "REFUNDED"))
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "COMPLETED", "ACCEPTED","CANCELED", "REFUNDED"))
                     .orderBy("date", Query.Direction.DESCENDING)
                     .get().get();
         } catch (Exception e) {
@@ -305,12 +302,12 @@ public class ReservationService {
 
     public List<ReadPetsitterReservedDTO> getPetsitterReserved(String petsitterId) {
         DocumentSnapshot petsitter;
-        try{
+        try {
             petsitter = firestore.collection("users").document(petsitterId).get().get();
-            if(!petsitter.getBoolean("petsitter")) {
+            if (!petsitter.getBoolean("petsitter")) {
                 throw new ReservationException("펫시터 권한이 없습니다.");
             }
-        }catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
@@ -318,7 +315,7 @@ public class ReservationService {
         try {
             snapshots = firestore.collection("reservations")
                     .whereEqualTo("petsitterId", petsitterId)
-                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED"))
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "ACCEPTED"))
                     .orderBy("date", Query.Direction.DESCENDING)
                     .get().get();
         } catch (Exception e) {
@@ -346,16 +343,293 @@ public class ReservationService {
                     user.getString("profileImageUrl"),
                     user.getString("phone"),
                     user.getString("address"),
+                    doc.getString("careType"),
                     doc.getString("date"),
                     doc.getString("startTime"),
                     doc.getString("endTime"),
                     doc.getString("petType"),
                     doc.getString("petName"),
+                    doc.getString("requestNote"),
                     doc.getString("reservationStatus")
             ));
         }
 
         return result;
+    }
+
+    public PetsitterReservationCountDTO getReservationCount(String petsitterId) {
+        long total = 0;
+        long completed = 0;
+        long refunded = 0;
+        long canceled = 0;
+        LocalDateTime now = LocalDateTime.now();
+
+        DocumentSnapshot petsitter;
+        try {
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if (!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("해당 펫시터가 존재하지 않습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        QuerySnapshot snapshots;
+        try {
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        for(DocumentSnapshot doc:snapshots.getDocuments()) {
+
+            total++; // 전체 횟수
+
+            String reservationStatus = doc.getString("reservationStatus");
+            String paymentStatus = doc.getString("paymentStatus");
+
+            if("CANCELED".equals(reservationStatus)) {
+                canceled++; // 취소 건수
+            }
+
+            if("REFUNDED".equals(paymentStatus)) {
+                refunded++; // 환불 건수
+            }
+
+            if("ACCEPTED".equals(reservationStatus) && "COMPLETED".equals(paymentStatus)) { // 예약 상태 + 결제 완료 상태 만족 시
+
+                LocalDate date = LocalDate.parse(doc.getString("date"));
+                LocalTime endTime = LocalTime.parse(doc.getString("endTime"));
+
+                if(LocalDateTime.of(date, endTime).isBefore(now)){ // 해당 예약 날짜와 시간이 지나면 완료 횟수 추가
+                    completed++;
+                }
+            }
+        }
+
+        return new PetsitterReservationCountDTO(
+                total,
+                completed,
+                refunded,
+                canceled
+        );
+    }
+
+    public PetsitterRevenueDTO getTotalRevenue(String petsitterId){
+        DocumentSnapshot petsitter;
+
+        try {
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if (!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("펫시터 권한이 없습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        QuerySnapshot snapshots;
+
+        try{
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .whereEqualTo("paymentStatus", "COMPLETED")
+                    .get().get();
+        }catch(Exception e){
+            throw new RuntimeException("수익 조회에 실패하였습니다.", e);
+        }
+
+        long totalRevenue = 0;
+
+        for(DocumentSnapshot doc:snapshots.getDocuments()){
+            String reservationStatus = doc.getString("reservationStatus");
+            String paymentStatus = doc.getString("paymentStatus");
+            LocalDate date = LocalDate.parse(doc.getString("date"));
+            LocalTime endTime = LocalTime.parse(doc.getString("endTime"));
+
+            if("CANCELED".equals(reservationStatus)) {
+                continue;
+            }
+
+            Long price = doc.getLong("price");
+            if(price != null){
+                if ("RESERVED".equals(reservationStatus)
+                        && "COMPLETED".equals(paymentStatus)
+                        && LocalDateTime.of(date, endTime).isBefore(LocalDateTime.now())) {
+                    totalRevenue += price;
+                }
+            }
+        }
+
+        return new PetsitterRevenueDTO(totalRevenue);
+    }
+
+    public ScheduleWeekDTO getScheduleWeek(String petsitterId) {
+        DocumentSnapshot petsitter;
+
+        try {
+            petsitter = firestore.collection("users").document(petsitterId).get().get();
+            if (!petsitter.getBoolean("petsitter")) {
+                throw new ReservationException("펫시터 권한이 없습니다.");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startOfWeek = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate endOfWeek = today.plusDays(6);
+
+        Map<DayOfWeek, ScheduleDayDTO> schedule = new HashMap<>();
+        for(DayOfWeek day : DayOfWeek.values()){
+            schedule.put(day, new ScheduleDayDTO(0,0));
+        }
+
+        QuerySnapshot snapshots;
+        try{
+            snapshots = firestore.collection("reservations")
+                    .whereEqualTo("petsitterId", petsitterId)
+                    .whereIn("reservationStatus", List.of("ACCEPTED", "RESERVED"))
+                    .get().get();
+        }catch(Exception e){
+            throw new RuntimeException("예약 조회에 실패하였습니다", e);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for(DocumentSnapshot doc:snapshots.getDocuments()){
+
+            String date1 = doc.getString("date");
+            String endTime1 = doc.getString("endTime");
+            String reservationStatus = doc.getString("reservationStatus");
+            String paymentStatus = doc.getString("paymentStatus");
+
+            if(date1 == null || endTime1 == null) continue;
+
+            LocalDate date = LocalDate.parse(date1);
+
+            if (date.isBefore(startOfWeek) || date.isAfter(endOfWeek)) {
+                continue;
+            }
+
+            DayOfWeek day = date.getDayOfWeek();
+            ScheduleDayDTO prev = schedule.get(day);
+
+            long total = prev.getTotal() + 1;
+            long completed = prev.getCompleted();
+
+            // 완료 조건
+            if ("ACCEPTED".equals(reservationStatus)
+                    && "COMPLETED".equals(paymentStatus)) {
+
+                LocalTime endTime = LocalTime.parse(endTime1);
+                if (LocalDateTime.of(date, endTime).isBefore(now)) {
+                    completed++;
+                }
+            }
+
+            schedule.put(day, new ScheduleDayDTO(completed, total));
+        }
+
+        return new ScheduleWeekDTO(schedule);
+    }
+
+    public void acceptReservation(String petsitterId, String reservationId){
+        try{
+            firestore.runTransaction(tx -> {
+
+                DocumentReference ref =
+                        firestore.collection("reservations").document(reservationId);
+
+                DocumentSnapshot doc = tx.get(ref).get();
+
+                if (!doc.exists()) {
+                    throw new ReservationException("예약이 존재하지 않습니다.");
+                }
+
+                if (!petsitterId.equals(doc.getString("petsitterId"))) {
+                    throw new ReservationException("예약 수락 권한이 없습니다.");
+                }
+
+                if (!"RESERVED".equals(doc.getString("reservationStatus"))
+                        || !"COMPLETED".equals(doc.getString("paymentStatus"))) {
+                    throw new ReservationException("임시 예약 완료 상태의 요청만 수락할 수 있습니다.");
+                }
+
+                tx.update(ref,
+                        "reservationStatus", "ACCEPTED",
+                        "acceptedAt", Timestamp.now()
+                );
+
+                return null;
+            }).get();
+        }catch(Exception e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void rejectReservation(String petsitterUid, String reservationId) {
+
+        try {
+            firestore.runTransaction(tx -> {
+
+                DocumentReference ref =
+                        firestore.collection("reservations").document(reservationId);
+
+                DocumentSnapshot doc = tx.get(ref).get();
+
+                // 1. 예약 존재 여부
+                if (!doc.exists()) {
+                    throw new ReservationException("예약이 존재하지 않습니다.");
+                }
+
+                // 2. 펫시터 권한
+                if (!petsitterUid.equals(doc.getString("petsitterId"))) {
+                    throw new ReservationException("예약 거절 권한이 없습니다.");
+                }
+
+                // 3. 상태 검증
+                if (!"RESERVED".equals(doc.getString("reservationStatus"))
+                        || !"COMPLETED".equals(doc.getString("paymentStatus"))) {
+                    throw new ReservationException("임시 예약 완료 상태의 요청만 거절할 수 있습니다.");
+                }
+
+                // 4. 환불 계산 데이터
+                String dateStr = doc.getString("date");
+                String startTimeStr = doc.getString("startTime");
+                Long priceLong = doc.getLong("price");
+
+                if (dateStr == null || startTimeStr == null || priceLong == null) {
+                    throw new ReservationException("예약 데이터가 올바르지 않습니다.");
+                }
+
+                LocalDate date = LocalDate.parse(dateStr);
+                LocalTime startTime = LocalTime.parse(startTimeStr);
+                int price = priceLong.intValue();
+
+                // 5. 환불 수수료 계산
+                int fee = PaymentUtil.calculateCancelFee(date, startTime, price);
+                int refundAmount = Math.max(price - fee, 0);
+
+                // 6. 환불 처리
+                paymentRefund(tx, ref, refundAmount);
+
+                // 7. 예약 상태 업데이트
+                tx.update(ref,
+                        "reservationStatus", "CANCELED",
+                        "paymentStatus", "REFUNDED",
+                        "refundAmount", refundAmount,
+                        "cancelFee", fee,
+                        "canceledAt", Timestamp.now()
+                );
+
+                return null;
+            }).get();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // db에 들어갈 요일 형식
