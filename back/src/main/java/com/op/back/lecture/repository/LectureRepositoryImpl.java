@@ -46,6 +46,29 @@ public class LectureRepositoryImpl implements LectureRepository {
     }
 
     @Override
+    public List<Lecture> findByIds(List<String> lectureIds) {
+        if (lectureIds == null || lectureIds.isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            // Firestore whereIn 제한: 최대 10개
+            // → ES search size도 10~20으로 맞추는 게 안전
+            return firestore.collection("lectures")
+                    .whereIn("lectureId", lectureIds)
+                    .get()
+                    .get()
+                    .getDocuments()
+                    .stream()
+                    .map(doc -> doc.toObject(Lecture.class))
+                    .toList();
+
+        } catch (Exception e) {
+            throw new RuntimeException("강의 ID 목록 조회 실패", e);
+        }
+    }
+
+    @Override
     public List<Lecture> findAllPublishedApproved(int limit, int offset) {
         try {
             return firestore.collection("lectures")

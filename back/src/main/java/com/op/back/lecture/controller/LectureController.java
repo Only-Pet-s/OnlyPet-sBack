@@ -3,8 +3,11 @@ package com.op.back.lecture.controller;
 import com.op.back.lecture.dto.LectureCreateRequest;
 import com.op.back.lecture.dto.LectureDetailResponse;
 import com.op.back.lecture.dto.LectureListItemResponse;
+import com.op.back.lecture.service.LectureSearchService;
 import com.op.back.lecture.service.LectureService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +21,7 @@ import java.util.List;
 public class LectureController {
 
     private final LectureService lectureService;
+    private final LectureSearchService lectureSearchService;
 
     private String currentUid() {
         return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -84,15 +88,24 @@ public class LectureController {
         return lectureService.getLectureVideos(lectureId, currentUid);
     }
 
-    //검색
+    //Lecture Theme 검색
     @GetMapping("/search")
-    public List<LectureListItemResponse> searchLectures(
+    public List<LectureListItemResponse> search(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return lectureSearchService.search(q, size);
+    }
+
+    //확장 검색
+    @GetMapping("/search/advanced")
+    public List<LectureListItemResponse> advancedSearch(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) List<String> tags,
             @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue = "0") int offset
     ) {
-        return lectureService.searchLectures(keyword, tags, category, limit, offset);
+        return lectureSearchService.search(keyword, tags, category, limit, offset);
     }
 }
