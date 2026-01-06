@@ -6,6 +6,7 @@ import com.op.back.chat.dto.ChatRequestDTO;
 import com.op.back.chat.dto.ChatResponseDTO;
 import com.op.back.chat.dto.ChatroomResponseDTO;
 import com.op.back.chat.util.ChatroomUtil;
+import com.op.back.fcm.service.FcmService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.Map;
 public class ChatService {
 
     private final Firestore firestore;
+    private final FcmService fcmService;
 
     // 유저 프로필 조회
     private Map<String, String> getUserProfile(String uid) {
@@ -94,7 +96,7 @@ public class ChatService {
                     "unreadCount." + dto.getReceiverUid(),
                     FieldValue.increment(1)
             ));
-
+            fcmService.sendFcmChat(uid, dto.getReceiverUid(), dto.getContent(), roomId);
             return null;
         });
     }
