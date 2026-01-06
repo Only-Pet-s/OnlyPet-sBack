@@ -53,6 +53,33 @@ public class ShortsSearchRepository {
         }
     }
 
+    /*
+        ID기반 검색(ES에서 id만 뽑은 뒤, firesotre에서 재조회하는 용도)
+    */
+    public List<String> searchShortsIds(String keyword, int size) {
+        try {
+            SearchResponse<ShortsDocument> response = client.search(
+                s -> s
+                    .index(INDEX)
+                    .size(size)
+                    .query(q -> q
+                        .multiMatch(m -> m
+                            .query(keyword)
+                            .fields("description", "hashtags")
+                        )
+                    ),
+                ShortsDocument.class
+            );
+
+            return response.hits().hits().stream()
+                    .map(hit -> hit.id())
+                    .toList();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Shorts search failed", e);
+        }
+    }
+
     public void delete(String shortsId) {
         try {
             client.delete(d -> d

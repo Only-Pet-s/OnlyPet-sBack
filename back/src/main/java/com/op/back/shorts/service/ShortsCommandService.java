@@ -61,6 +61,8 @@ public class ShortsCommandService {
         data.put("thumbnailUrl", thumbnailUrl);
         data.put("description", request.getDescription());
         data.put("hashtags", request.getHashtags() != null ? request.getHashtags() : Collections.emptyList());
+        data.put("commentAvailable",
+                request.getCommentAvailable() != null ? request.getCommentAvailable() : Boolean.TRUE);
         data.put("likeCount", 0L);
         data.put("commentCount", 0L);
         data.put("viewCount", 0L);
@@ -106,6 +108,14 @@ public class ShortsCommandService {
         }
         if (request.getHashtags() != null) {
             updates.put("hashtags", request.getHashtags());
+        }
+
+        if (request.getCommentAvailable() != null) {
+            updates.put("commentAvailable", request.getCommentAvailable());
+        }
+
+        if (request.getCommentAvailable() != null) {
+            updates.put("commentAvailable", request.getCommentAvailable());
         }
 
         // 영상 교체 (옵션)
@@ -172,7 +182,7 @@ public class ShortsCommandService {
 
         return shortsQueryService.getShorts(shortsId, currentUid);
     }
-
+    
     // 쇼츠 삭제
     public void deleteShorts(String shortsId, String currentUid) throws Exception {
 
@@ -199,7 +209,7 @@ public class ShortsCommandService {
             // log only
         }
     }
-
+    
     private String ensureThumbnail(String uid, String shortsId, MultipartFile videoFile, MultipartFile thumbnailFile)
             throws IOException {
 

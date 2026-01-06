@@ -3,6 +3,7 @@ package com.op.back.shorts.service;
 import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
 import com.op.back.shorts.dto.ShortsUpdateRequest;
+import com.op.back.shorts.search.ShortsSearchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,7 +23,7 @@ public class ShortsService {
     private final ShortsCommandService shortsCommandService;
     private final ShortsQueryService shortsQueryService;
     private final ShortsReactionService shortsReactionService;
-    private final ShortsSearchService shortsSearchService;
+    private final ShortsSearchRepository shortsSearchRepository;
 
     // 쇼츠 생성
     public String createShorts(ShortsCreateRequest request, MultipartFile videoFile,
@@ -88,7 +89,16 @@ public class ShortsService {
     /*
         엘라스틱 서치 기반 검색
     */
-    public List<ShortsResponse> search(String q) {
-        return shortsSearchService.search(q);
+    public List<ShortsResponse> search(String keyword, int size, String currentUid)
+            throws ExecutionException, InterruptedException {
+
+        List<String> ids = shortsSearchRepository.searchShortsIds(keyword, size);
+        if (ids.isEmpty()) return List.of();
+
+        List<ShortsResponse> result = new java.util.ArrayList<>();
+        for (String shortsId : ids) {
+            result.add(shortsQueryService.getShorts(shortsId, currentUid));
+        }
+        return result;
     }
 }

@@ -67,7 +67,22 @@ public class LectureRepositoryImpl implements LectureRepository {
     @Override
     public List<Lecture> findByLecturerUidPublishedApproved(
             String uid, int limit, int offset) {
-        return List.of();
+        try {
+            return firestore.collection("lectures")
+                    .whereEqualTo("lecturerUid", uid)
+                    .whereEqualTo("adminApproved", true)
+                    .whereEqualTo("published", true)
+                    .offset(offset)
+                    .limit(limit)
+                    .get()
+                    .get()
+                    .getDocuments()
+                    .stream()
+                    .map(doc -> doc.toObject(Lecture.class))
+                    .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("강의자 강의 목록 조회 실패", e);
+        }
     }
 
     @Override

@@ -29,6 +29,9 @@ public class ShortsResponse {
     private long commentCount;
     private long viewCount;
 
+    // 댓글 허용 여부
+    private boolean commentAvailable;
+
     // 상태
     private boolean liked;
     private boolean bookmarked;

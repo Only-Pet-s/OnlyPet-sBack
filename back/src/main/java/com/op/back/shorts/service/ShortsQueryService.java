@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-/** 조회/리스트/해시태그(Firestore) */
+//조회/리스트/해시태그(Firestore)
 @Service
 @RequiredArgsConstructor
 public class ShortsQueryService {

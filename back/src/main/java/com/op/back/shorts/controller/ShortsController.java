@@ -93,8 +93,11 @@ public class ShortsController {
 
         //태그 검색
         @GetMapping("/search")
-        public List<ShortsResponse> search(@RequestParam String q) {
-                return shortsService.search(q);
+        public List<ShortsResponse> search(
+                        @RequestParam String q,
+                        @RequestParam(defaultValue = "10") int size
+        ) throws Exception {
+                return shortsService.search(q, size, currentUid());
         }
 
         //업데이트
