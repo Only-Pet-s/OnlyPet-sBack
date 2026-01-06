@@ -42,12 +42,37 @@ public class LectureController {
             @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestParam String title,
             @RequestParam String description,
-            @RequestParam int order,
             @RequestParam(defaultValue = "false") boolean preview
     ) {
         lectureService.uploadVideo(
-                lectureId, video, thumbnail, title, description, order, preview, currentUid()
+                lectureId, video, thumbnail, title, description, preview, currentUid()
         );
+    }
+
+    //강의 동영상 수정
+    @PutMapping("/{lectureId}/videos/{videoId}")
+    public void updateVideo(
+            @PathVariable String lectureId,
+            @PathVariable String videoId,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) Integer order,
+            @RequestParam(required = false) Boolean preview,
+            @RequestParam(value = "video", required = false) MultipartFile video,
+            @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail
+    ) {
+        lectureService.updateVideo(
+                lectureId, videoId, title, description, order, preview, video, thumbnail, currentUid()
+        );
+    }
+
+    //강의 동영상 삭제 (soft delete)
+    @DeleteMapping("/{lectureId}/videos/{videoId}")
+    public void deleteVideo(
+            @PathVariable String lectureId,
+            @PathVariable String videoId
+    ) {
+        lectureService.deleteVideo(lectureId, videoId, currentUid());
     }
 
     //강의 전체 목록 (OFFSET증가하면 다음 페이지 볼 수 있음 0/20/40등올 조절)

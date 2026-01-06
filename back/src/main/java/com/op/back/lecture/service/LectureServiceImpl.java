@@ -188,7 +188,7 @@ public class LectureServiceImpl implements LectureService {
     */
     @Override
     public void uploadVideo(String lectureId, MultipartFile video, MultipartFile thumbnail, String title, 
-                String description, int order, boolean preview, String currentUid) {
+                String description, boolean preview, String currentUid) {
         // 강의 테마 존재 확인
         Lecture lecture = lectureRepository.findById(lectureId)
                 .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
@@ -197,6 +197,9 @@ public class LectureServiceImpl implements LectureService {
         if (!lecture.getLecturerUid().equals(currentUid)) {
             throw new IllegalStateException("본인 강의만 업로드 가능");
         }
+        
+        // order 자동 부여 (마지막 order + 1)
+        int order = lectureRepository.getNextVideoOrder(lectureId);
 
         // S3 업로드
         String videoId = UUID.randomUUID().toString();
@@ -260,8 +263,10 @@ public class LectureServiceImpl implements LectureService {
         lectureVideo.setDescription(description);
         lectureVideo.setOrder(order);
         lectureVideo.setVideoUrl(videoUrl);
+        lectureVideo.setThumbnailUrl(thumbnailUrl);
         lectureVideo.setPreview(preview);
         lectureVideo.setCreatedAt(Timestamp.now());
+        lectureVideo.setDeleted(false);
 
         lectureRepository.saveVideo(lectureId, lectureVideo);
 
@@ -304,6 +309,8 @@ public class LectureServiceImpl implements LectureService {
                 .toList();
     }
 
+
+    //업데이트
     @Override
     public void updateVideo(String lectureId,String videoId,String title,String description,Integer order,
                 Boolean preview, org.springframework.web.multipart.MultipartFile video, 
@@ -335,60 +342,82 @@ public class LectureServiceImpl implements LectureService {
         if (video != null && !video.isEmpty()) {
                 String key = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + ".mp4";
                 try {
-                s3Client.putObject(
-                        software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
-                                .bucket(bucketName)
-                                .key(key)
-                                .contentType(video.getContentType())
-                                .build(),
-                        software.amazon.awssdk.core.sync.RequestBody.fromBytes(video.getBytes())
-                );
+                        s3Client.putObject(
+                                software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                                        .bucket(bucketName)
+                                        .key(key)
+                                        .contentType(video.getContentType())
+                                        .build(),
+                                software.amazon.awssdk.core.sync.RequestBody.fromBytes(video.getBytes())
+                        );
                 } catch (Exception e) {
-                throw new RuntimeException("강의 영상 업로드 실패", e);
+                        throw new RuntimeException("강의 영상 업로드 실패", e);
                 }
                 String videoUrl = "https://" + bucketName + ".s3.amazonaws.com/" + key;
                 updates.put("videoUrl", videoUrl);
 
                 // 썸네일이 따로 안 오면 새 영상 기준으로 재생성
                 if (thumbnail == null || thumbnail.isEmpty()) {
-                try {
-                        byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(video);
-                        String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
-                        s3Client.putObject(
-                                software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
-                                        .bucket(bucketName)
-                                        .key(thumbKey)
-                                        .contentType("image/jpeg")
-                                        .build(),
-                                software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbBytes)
-                        );
-                        updates.put("thumbnailUrl", "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey);
-                } catch (Exception e) {
-                        throw new RuntimeException("강의 썸네일 자동 생성 실패", e);
-                }
+                        try {
+                                byte[] thumbBytes = com.op.back.common.util.VideoThumbnailUtil.extractJpegBytes(video);
+                                String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
+                                s3Client.putObject(
+                                        software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                                                .bucket(bucketName)
+                                                .key(thumbKey)
+                                                .contentType("image/jpeg")
+                                                .build(),
+                                        software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbBytes)
+                                );
+                                updates.put("thumbnailUrl", "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey);
+                        } catch (Exception e) {
+                                throw new RuntimeException("강의 썸네일 자동 생성 실패", e);
+                        }
                 }
         }
 
         // thumbnail 교체
         if (thumbnail != null && !thumbnail.isEmpty()) {
                 try {
-                String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
-                s3Client.putObject(
-                        software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
-                                .bucket(bucketName)
-                                .key(thumbKey)
-                                .contentType(thumbnail.getContentType() != null ? thumbnail.getContentType() : "image/jpeg")
-                                .build(),
-                        software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbnail.getBytes())
-                );
-                updates.put("thumbnailUrl", "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey);
+                        String thumbKey = "lectures/" + currentUid + "/" + lectureId + "/" + videoId + "_thumb.jpg";
+                        s3Client.putObject(
+                                software.amazon.awssdk.services.s3.model.PutObjectRequest.builder()
+                                        .bucket(bucketName)
+                                        .key(thumbKey)
+                                        .contentType(thumbnail.getContentType() != null ? thumbnail.getContentType() : "image/jpeg")
+                                        .build(),
+                                software.amazon.awssdk.core.sync.RequestBody.fromBytes(thumbnail.getBytes())
+                        );
+                        updates.put("thumbnailUrl", "https://" + bucketName + ".s3.amazonaws.com/" + thumbKey);
                 } catch (Exception e) {
-                throw new RuntimeException("강의 썸네일 업로드 실패", e);
+                        throw new RuntimeException("강의 썸네일 업로드 실패", e);
                 }
         }
 
         if (!updates.isEmpty()) {
                 lectureRepository.updateVideo(lectureId, videoId, updates);
         }
+    }
+
+    //동영상 삭제
+    @Override
+    public void deleteVideo(String lectureId, String videoId, String currentUid) {
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
+
+        if (!lecture.getLecturerUid().equals(currentUid)) {
+            throw new IllegalStateException("본인 강의만 삭제 가능");
         }
+
+        // 존재 확인
+        LectureVideo lectureVideo = lectureRepository.findVideoById(lectureId, videoId)
+                .orElseThrow(() -> new IllegalArgumentException("영상 없음"));
+
+        if (lectureVideo.isDeleted()) {
+            return; // idempotent
+        }
+
+        lectureRepository.softDeleteVideo(lectureId, videoId);
+        lectureRepository.decrementVideoCount(lectureId);
+    }
 }
