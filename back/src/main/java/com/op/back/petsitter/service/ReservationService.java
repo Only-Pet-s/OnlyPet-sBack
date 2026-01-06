@@ -661,7 +661,7 @@ public class ReservationService {
 
         // 2. 중복 환불 방지
         if ("REFUNDED".equals(paymentStatus)) {
-            return; // 이미 환불됨 -> idempotent
+            return;
         }
 
         // 3. 가상 환불 처리
