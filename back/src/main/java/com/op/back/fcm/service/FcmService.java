@@ -29,7 +29,7 @@ public class FcmService {
         DocumentSnapshot sender = firestore.collection("users").document(senderUid).get().get();
         DocumentSnapshot receiver = firestore.collection("users").document(receiverUid).get().get();
 
-        List<String> tokens = receiver.get("fcmTokens", List.class);
+        List<String> tokens = (List<String>)receiver.get("fcmTokens");
 
         if(tokens==null){return;}
 

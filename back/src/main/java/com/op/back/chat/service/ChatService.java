@@ -68,15 +68,36 @@ public class ChatService {
         return roomId;
     }
 
-    // 메시지 전송
-    public void sendMessage(String uid,ChatRequestDTO dto) {
+    // 채팅 보내기
+    public void sendMessage(String uid, ChatRequestDTO dto) {
+
         String roomId =
                 ChatroomUtil.createRoomId(uid, dto.getReceiverUid());
 
+        // Firestore 트랜잭션
         firestore.runTransaction(tx -> {
+
             DocumentReference roomRef =
                     firestore.collection("chatRooms").document(roomId);
 
+            DocumentSnapshot roomSnap = tx.get(roomRef).get();
+
+            // 채팅방 없으면 생성
+            if (!roomSnap.exists()) {
+                tx.set(roomRef, Map.of(
+                        "participants", List.of(uid, dto.getReceiverUid()),
+                        "createdAt", Timestamp.now(),
+                        "lastMessage", "",
+                        "lastMessageAt", Timestamp.now(),
+                        "lastSenderUid", "",
+                        "unreadCount", Map.of(
+                                uid, 0,
+                                dto.getReceiverUid(), 0
+                        )
+                ));
+            }
+
+            // 메시지 저장
             DocumentReference msgRef =
                     roomRef.collection("messages").document();
 
@@ -89,6 +110,7 @@ public class ChatService {
                     "deleted", false
             ));
 
+            // 채팅방 요약 업데이트
             tx.update(roomRef, Map.of(
                     "lastMessage", dto.getContent(),
                     "lastMessageAt", Timestamp.now(),
@@ -96,10 +118,23 @@ public class ChatService {
                     "unreadCount." + dto.getReceiverUid(),
                     FieldValue.increment(1)
             ));
-            fcmService.sendFcmChat(uid, dto.getReceiverUid(), dto.getContent(), roomId);
+
             return null;
         });
+
+        // 트랜잭션 성공 후 FCM 전송
+        try {
+            fcmService.sendFcmChat(
+                    uid,
+                    dto.getReceiverUid(),
+                    dto.getContent(),
+                    roomId
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
+
 
     //메시지 조회
     public List<ChatResponseDTO> getMessages(String roomId) throws Exception {
