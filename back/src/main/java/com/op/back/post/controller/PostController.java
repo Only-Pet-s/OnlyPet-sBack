@@ -34,16 +34,14 @@ public class PostController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> createPost(
             @RequestPart("data") PostCreateRequest request,
-            @RequestPart("media") MultipartFile media,
-            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+            @RequestPart(value = "media", required = false) List<MultipartFile> media
 
     ) throws Exception {
 
         return ResponseEntity.ok(
-                postService.createPost(request, media, thumbnail, currentUid())
+                postService.createPost(request, media, currentUid())
         );
     }
-
     //최신 게시글 목록 조회
     @GetMapping
     public ResponseEntity<List<PostResponse>> getLatestPosts(
@@ -65,16 +63,15 @@ public class PostController {
         );
     }
 
-    //게시글 수정 patch (multipart: media/thumbnail 교체 가능)
+    //게시글 수정 patch (multipart: media 추가/삭제/재정렬 가능)
     @PatchMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<PostResponse> updatePostMultipart(
             @PathVariable String postId,
             @RequestPart("data") PostUpdateRequest request,
-            @RequestPart(value = "media", required = false) MultipartFile media,
-            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+            @RequestPart(value = "media", required = false) List<MultipartFile> media
     ) throws Exception {
         return ResponseEntity.ok(
-                postService.updatePost(postId, request, media, thumbnail, currentUid())
+                postService.updatePost(postId, request, media, currentUid())
         );
     }
 
@@ -123,23 +120,19 @@ public class PostController {
         return ResponseEntity.ok().build();
     }
 
-    //검색 [엘라스틱]
-    @GetMapping("/search")
-    public List<PostResponse> search(@RequestParam String q) {
-        return postService.search(q);
-    }
-    
-    //내가 누른 좋아요 포스트
-    @GetMapping("/{uid}/likes")
-    public List<PostResponse> getLikedPosts(@PathVariable String uid)
-            throws Exception {
-        return postService.getLikedPosts(uid);
-    }
+    // //검색 [엘라스틱 참고 & firestore]
+    // @GetMapping("/search")
+    // public List<PostResponse> search(@RequestParam String q) {
+    //     return postService.search(q);
+    // }
 
-    //내가 누른 북마크 포스트
-    @GetMapping("/{uid}/bookmarks")
-    public List<PostResponse> getBookmarkedPosts(@PathVariable String uid)
-            throws Exception {
-        return postService.getBookmarkedPosts(uid);
+    //서치 [ES전용]
+    @GetMapping("/search")
+    public List<PostResponse> search(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "10") int size
+    ) throws ExecutionException, InterruptedException {
+
+        return postService.search(q, size, currentUid());
     }
 }

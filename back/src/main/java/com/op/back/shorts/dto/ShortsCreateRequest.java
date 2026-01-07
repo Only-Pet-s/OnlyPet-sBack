@@ -10,4 +10,7 @@ import java.util.List;
 public class ShortsCreateRequest {
     private String description;
     private List<String> hashtags;
+
+    //댓글 허용 여부 (기본: true)
+    private Boolean commentAvailable;
 }
