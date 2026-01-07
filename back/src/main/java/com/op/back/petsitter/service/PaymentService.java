@@ -88,12 +88,12 @@ public class PaymentService {
             return null;
         }).get();
 
-        DocumentSnapshot reservationInfo = firestore.collection("reservations").document(reservationId).get().get();
+        DocumentSnapshot paymentInfo = firestore.collection("reservations").document(reservationId).get().get();
 
-        String buyerUid = reservationInfo.getString("userUid");
-        String petsitterId = reservationInfo.getString("petsitterId");
-        String price = String.valueOf(reservationInfo.getLong("price"));
-        String resultPaymentId = reservationInfo.getString("paymentId");
+        String buyerUid = paymentInfo.getString("userUid");
+        String petsitterId = paymentInfo.getString("petsitterId");
+        String price = String.valueOf(paymentInfo.getLong("price"));
+        String resultPaymentId = paymentInfo.getString("paymentId");
 
         fcmService.sendPaymentCompleted(buyerUid,petsitterId,price,resultPaymentId);
     }
@@ -119,5 +119,13 @@ public class PaymentService {
 
             return null;
         }).get();
+        DocumentSnapshot refundInfo = firestore.collection("reservations").document(reservationId).get().get();
+
+        String buyerUid = refundInfo.getString("userUid");
+        String petsitterId = refundInfo.getString("petsitterId");
+        String price = String.valueOf(refundInfo.getLong("price"));
+        String resultPaymentId = refundInfo.getString("paymentId");
+
+        fcmService.sendRefund(buyerUid,petsitterId,price,resultPaymentId);
     }
 }
