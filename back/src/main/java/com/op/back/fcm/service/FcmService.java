@@ -47,6 +47,7 @@ public class FcmService {
         );
     }
 
+    // 결제 알림
     public void sendPaymentCompleted(
             String buyerUid,
             String petsitterUid,
@@ -79,6 +80,7 @@ public class FcmService {
         );
     }
 
+    // 환불 알림
     public void sendRefund(
             String buyerUid,
             String petsitterUid,
@@ -106,6 +108,9 @@ public class FcmService {
         );
     }
 
+    // 예약 관련 알림 필요: 거절, 수락, 완료, 취소
+
+    // fcm 푸시 알림 공통 메소드
     private void send(
             String targetUid,
             String title,
