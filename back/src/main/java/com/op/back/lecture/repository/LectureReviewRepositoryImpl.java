@@ -231,6 +231,24 @@ public class LectureReviewRepositoryImpl implements LectureReviewRepository {
         }
     }
 
+    @Override
+    public List<LectureReview> findMyReviews(String uid) {
+        try {
+            return firestore.collection("users")
+                    .document(uid)
+                    .collection("lecture_reviews")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get()
+                    .get()
+                    .getDocuments()
+                    .stream()
+                    .map(doc -> doc.toObject(LectureReview.class))
+                    .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("내 강의 리뷰 조회 실패", e);
+        }
+    }
+
     // users/{uid}/lecture_reviews/{lectureId} 저장용 내부 모델
     private static class UserLectureReview {
         private String lectureId;
@@ -260,4 +278,5 @@ public class LectureReviewRepositoryImpl implements LectureReviewRepository {
         public Timestamp getCreatedAt() { return createdAt; }
         public Timestamp getUpdatedAt() { return updatedAt; }
     }
+
 }

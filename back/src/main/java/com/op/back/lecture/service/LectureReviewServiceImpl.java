@@ -81,6 +81,18 @@ public class LectureReviewServiceImpl implements LectureReviewService {
     }
 
     @Override
+    public List<LectureReviewResponse> getMyReviews(String uid) {
+
+        return lectureReviewRepository.findMyReviews(uid)
+                .stream()
+                .map(review -> LectureReviewResponse.from(
+                        review,
+                        true // mine = true
+                ))
+                .toList();
+    }
+    
+    @Override
     public LectureReviewResponse update(String lectureId, LectureReviewUpdateRequest req, String currentUid) {
 
         Lecture lecture = lectureRepository.findById(lectureId)
