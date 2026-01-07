@@ -94,7 +94,11 @@ public class PostMapperService {
                 .liked(false)
                 .bookmarked(false)
                 .mine(false)
-                .createdAt(doc.getCreatedAt())
+                .createdAt(
+                    doc.getCreatedAt() != null
+                        ? Instant.parse(doc.getCreatedAt())
+                        : null
+                )
                 .build();
     }
 

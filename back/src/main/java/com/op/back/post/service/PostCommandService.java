@@ -88,7 +88,7 @@ public class PostCommandService {
                         .mediaType(postMediaService.getFirstMediaType(postRef))
                         .likeCount(0)
                         .commentCount(0)
-                        .createdAt(Instant.now())
+                        .createdAt(Instant.now().toString())
                         .build()
         );
 
@@ -175,6 +175,7 @@ public class PostCommandService {
         // 7) ES 동기화
         Timestamp ts = snap.getTimestamp("createdAt");
         Instant createdAt = ts != null ? Instant.ofEpochSecond(ts.getSeconds(), ts.getNanos()) : null;
+        String createdAtStr = createdAt != null ? createdAt.toString() : Instant.now().toString();
         postSearchService.upsert(
                 PostDocument.builder()
                         .id(postId)
@@ -184,7 +185,7 @@ public class PostCommandService {
                         .mediaType(postMediaService.getFirstMediaType(postRef))
                         .likeCount(Optional.ofNullable(snap.getLong("likeCount")).orElse(0L).intValue())
                         .commentCount(Optional.ofNullable(snap.getLong("commentCount")).orElse(0L).intValue())
-                        .createdAt(createdAt != null ? createdAt : Instant.now())
+                        .createdAt(createdAtStr)
                         .build()
         );
 
