@@ -4,6 +4,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
+import com.op.back.fcm.service.FcmService;
 import com.op.back.petsitter.dto.PaymentReadyResponseDTO;
 import com.op.back.petsitter.exception.ReservationException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class PaymentService {
     private final Firestore firestore;
+    private final FcmService fcmService;
 
     public PaymentReadyResponseDTO readyPayment(String reservationId){
 
@@ -85,6 +87,15 @@ public class PaymentService {
 
             return null;
         }).get();
+
+        DocumentSnapshot reservationInfo = firestore.collection("reservations").document(reservationId).get().get();
+
+        String buyerUid = reservationInfo.getString("userUid");
+        String petsitterId = reservationInfo.getString("petsitterId");
+        String price = String.valueOf(reservationInfo.getLong("price"));
+        String resultPaymentId = reservationInfo.getString("paymentId");
+
+        fcmService.sendPaymentCompleted(buyerUid,petsitterId,price,resultPaymentId);
     }
 
     public void paymentCancel(String reservationId) throws Exception {
@@ -109,5 +120,4 @@ public class PaymentService {
             return null;
         }).get();
     }
-
 }

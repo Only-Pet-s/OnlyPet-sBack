@@ -124,7 +124,7 @@ public class ChatService {
 
         // 트랜잭션 성공 후 FCM 전송
         try {
-            fcmService.sendFcmChat(
+            fcmService.sendChat(
                     uid,
                     dto.getReceiverUid(),
                     dto.getContent(),
@@ -134,7 +134,6 @@ public class ChatService {
             throw new RuntimeException(e);
         }
     }
-
 
     //메시지 조회
     public List<ChatResponseDTO> getMessages(String roomId) throws Exception {
