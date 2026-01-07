@@ -39,11 +39,6 @@ public class LectureReviewController {
         return lectureReviewService.list(lectureId, limit, offset, currentUid());
     }
 
-    @GetMapping("/me")
-    public LectureReviewResponse mine(@PathVariable String lectureId) {
-        return lectureReviewService.getMine(lectureId, currentUid());
-    }
-
     @PutMapping
     public LectureReviewResponse update(
             @PathVariable String lectureId,

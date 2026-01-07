@@ -23,5 +23,5 @@ public class PostDocument {
     private int likeCount;
     private int commentCount;
 
-    private Instant createdAt;
+    private String createdAt;
 }

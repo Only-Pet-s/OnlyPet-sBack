@@ -13,4 +13,5 @@ public interface LectureReviewRepository {
     void createReview(String lectureId, String uid, LectureReview review, String lectureTitle);
     void updateReview(String lectureId, String uid, LectureReview review, String lectureTitle);
     void deleteReview(String lectureId, String uid);
+    List<LectureReview> findMyReviews(String uid);
 }

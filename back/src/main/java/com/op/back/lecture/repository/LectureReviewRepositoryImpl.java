@@ -1,6 +1,8 @@
 package com.op.back.lecture.repository;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
@@ -98,14 +100,7 @@ public class LectureReviewRepositoryImpl implements LectureReviewRepository {
                 int newCount = oldCount + 1;
 
                 tx.set(lecReviewRef, review);
-                tx.set(userReviewRef, new UserLectureReview(
-                        lectureId,
-                        lectureTitle,
-                        review.getRating(),
-                        review.getContent(),
-                        review.getCreatedAt(),
-                        review.getUpdatedAt()
-                ));
+                tx.set(userReviewRef, toUserSnapshot(lectureId, lectureTitle, review));
 
                 tx.update(lectureRef, "rating", newAvg, "reviewCount", newCount);
                 return null;
@@ -147,25 +142,15 @@ public class LectureReviewRepositoryImpl implements LectureReviewRepository {
                 LectureReview existing = existingSnap.toObject(LectureReview.class);
                 double oldScore = existing != null ? existing.getRating() : 0.0;
 
-                // count는 1 이상이어야 정상
                 double newAvg = count <= 1
                         ? review.getRating()
                         : oldAvg + ((review.getRating() - oldScore) / count);
 
-                // createdAt은 기존 값 유지 (갱신은 updatedAt만)
-                if (existing != null && existing.getCreatedAt() != null) {
-                    review.setCreatedAt(existing.getCreatedAt());
-                }
+                review.setCreatedAt(existing.getCreatedAt());
+                review.setUpdatedAt(Timestamp.now());
 
                 tx.set(lecReviewRef, review, SetOptions.merge());
-                tx.set(userReviewRef, new UserLectureReview(
-                        lectureId,
-                        lectureTitle,
-                        review.getRating(),
-                        review.getContent(),
-                        review.getCreatedAt(),
-                        review.getUpdatedAt()
-                ), SetOptions.merge());
+                tx.set(userReviewRef, toUserSnapshot(lectureId, lectureTitle, review), SetOptions.merge());
 
                 tx.update(lectureRef, "rating", newAvg);
                 return null;
@@ -207,13 +192,7 @@ public class LectureReviewRepositoryImpl implements LectureReviewRepository {
                 double score = existing != null ? existing.getRating() : 0.0;
 
                 int newCount = Math.max(0, oldCount - 1);
-                double newAvg;
-                if (newCount == 0) {
-                    newAvg = 0.0;
-                } else {
-                    // remove this score from average
-                    newAvg = ((oldAvg * oldCount) - score) / newCount;
-                }
+                double newAvg = newCount == 0 ? 0.0 : ((oldAvg * oldCount) - score) / newCount;
 
                 tx.delete(lecReviewRef);
                 tx.delete(userReviewRef);
@@ -231,33 +210,39 @@ public class LectureReviewRepositoryImpl implements LectureReviewRepository {
         }
     }
 
-    // users/{uid}/lecture_reviews/{lectureId} 저장용 내부 모델
-    private static class UserLectureReview {
-        private String lectureId;
-        private String lectureTitle;
-        private double rating;
-        private String content;
-        private Timestamp createdAt;
-        private Timestamp updatedAt;
-
-        @SuppressWarnings("unused")
-        public UserLectureReview() {}
-
-        public UserLectureReview(String lectureId, String lectureTitle, double rating, String content,
-                                 Timestamp createdAt, Timestamp updatedAt) {
-            this.lectureId = lectureId;
-            this.lectureTitle = lectureTitle;
-            this.rating = rating;
-            this.content = content;
-            this.createdAt = createdAt;
-            this.updatedAt = updatedAt;
+    @Override
+    public List<LectureReview> findMyReviews(String uid) {
+        try {
+            return firestore.collection("users")
+                    .document(uid)
+                    .collection("lecture_reviews")
+                    .orderBy("createdAt", Query.Direction.DESCENDING)
+                    .get()
+                    .get()
+                    .getDocuments()
+                    .stream()
+                    .map(doc -> doc.toObject(LectureReview.class))
+                    .toList();
+        } catch (Exception e) {
+            throw new RuntimeException("내 강의 리뷰 조회 실패", e);
         }
+    }
 
-        public String getLectureId() { return lectureId; }
-        public String getLectureTitle() { return lectureTitle; }
-        public double getRating() { return rating; }
-        public String getContent() { return content; }
-        public Timestamp getCreatedAt() { return createdAt; }
-        public Timestamp getUpdatedAt() { return updatedAt; }
+    // users/{uid}/lecture_reviews/{lectureId} 저장용 내부 모델
+    private Map<String, Object> toUserSnapshot(
+            String lectureId,
+            String lectureTitle,
+            LectureReview review
+    ) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("lectureId", lectureId);
+        map.put("lectureTitle", lectureTitle);
+        map.put("uid", review.getUid());
+        map.put("nickname", review.getNickname());
+        map.put("rating", review.getRating());
+        map.put("content", review.getContent());
+        map.put("createdAt", review.getCreatedAt());
+        map.put("updatedAt", review.getUpdatedAt());
+        return map;
     }
 }
