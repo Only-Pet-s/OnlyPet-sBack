@@ -66,6 +66,7 @@ public class FcmService {
                                             .build()
                             )
                             .putData("roomId", roomId)
+                            .putData("icon", "noti_icon")
                             .build();
 
                     FirebaseMessaging.getInstance().send(msg);
