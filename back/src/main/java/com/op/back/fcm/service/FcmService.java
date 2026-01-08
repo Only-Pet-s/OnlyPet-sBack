@@ -27,6 +27,12 @@ public class FcmService {
                 .update("fcmTokens", FieldValue.arrayUnion(req.getFcmToken()));
     }
 
+    public void unregisterToken(String uid, FcmTokenRequestDTO req){
+        firestore.collection("users")
+                .document(uid)
+                .update("fcmTokens", FieldValue.arrayRemove(req.getFcmToken()));
+    }
+
     // 채팅용 푸시 알림 전송 메서드
     public void sendChat(
             String senderUid,

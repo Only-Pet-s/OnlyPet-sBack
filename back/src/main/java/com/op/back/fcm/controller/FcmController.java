@@ -22,4 +22,13 @@ public class FcmController {
         String uid = jwtUtil.getUid(authHeader.substring(7));
         fcmService.registerToken(uid, req);
     }
+
+    @DeleteMapping("/fcmToken")
+    public void unregisterFcmToken(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody FcmTokenRequestDTO req
+    ){
+       String uid = jwtUtil.getUid(authHeader.substring(7));
+       fcmService.unregisterToken(uid,req);
+    }
 }
