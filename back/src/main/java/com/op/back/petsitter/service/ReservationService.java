@@ -282,13 +282,13 @@ public class ReservationService {
 
         fcmService.sendReservationCancelled(
                 (String) result.get("buyerUid"),
-                (String) result.get("buyerUid"),
+                (String) result.get("petsitterId"),
                 reservationId
         );
 
         fcmService.sendReservationCancelledRefund(
                 (String) result.get("buyerUid"),
-                (String) result.get("buyerUid"),
+                (String) result.get("petsitterId"),
                 String.valueOf(result.get("refundAmount")),
                 reservationId
         );
