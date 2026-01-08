@@ -47,7 +47,7 @@ public class MyLectureController {
     }
 
 
-    @GetMapping("my/reviews")
+    @GetMapping("/my/reviews")
     public List<LectureReviewResponse> myReviews() {
         return lectureReviewService.getMyReviews(currentUid());
     }

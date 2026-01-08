@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.Timestamp;
+import com.op.back.access.LectureAccessResult;
+import com.op.back.access.LectureAccessService;
 import com.op.back.auth.model.User;
 import com.op.back.lecture.dto.LectureReviewCreateRequest;
 import com.op.back.lecture.dto.LectureReviewListResponse;
@@ -26,6 +28,7 @@ public class LectureReviewServiceImpl implements LectureReviewService {
     private final LectureRepository lectureRepository;
     private final UserRepository userRepository;
     private final LectureReviewRepository lectureReviewRepository;
+    private final LectureAccessService lectureAccessService;
 
     @Override
     public LectureReviewResponse create(String lectureId, LectureReviewCreateRequest req, String currentUid) {
@@ -36,6 +39,12 @@ public class LectureReviewServiceImpl implements LectureReviewService {
         User user = userRepository.findByUid(currentUid)
                 .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
 
+        LectureAccessResult access =
+                        lectureAccessService.check(currentUid, lecture);
+
+        if (!access.accessible()) {
+                throw new IllegalStateException("구매 또는 구독 후 리뷰 작성 가능");
+        }
         // docId = uid 이므로 중복은 transaction에서 막히지만, 빠른 실패를 위해 한번 더
         if (lectureReviewRepository.existsReview(lectureId, currentUid)) {
             throw new IllegalStateException("이미 리뷰를 작성했습니다.");
