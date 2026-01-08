@@ -131,6 +131,21 @@ public class PetsitterService {
                 .document(uid)
                 .set(petsitter);
     }
+    
+    // 펫시터 정보 조회
+    public PetsitterExistsResponseDTO existsPetsitter(String uid) {
+
+        DocumentSnapshot snapshot;
+        try {
+            snapshot = firestore.collection("petsitters")
+                    .document(uid)
+                    .get().get();
+        } catch (Exception e) {
+            throw new RuntimeException("펫시터 조회 실패", e);
+        }
+
+        return new PetsitterExistsResponseDTO(snapshot.exists());
+    }
 
     private boolean filterPrice(PetsitterEntity p, Integer min, Integer max) {
         if (min != null && p.getPrice() < min) return false;

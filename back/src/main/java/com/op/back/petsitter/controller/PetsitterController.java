@@ -60,6 +60,17 @@ public class PetsitterController {
         return ResponseEntity.ok().build();
     }
 
+    // 펫시터 정보 유무 조회
+    @GetMapping("/register/exists")
+    public ResponseEntity<PetsitterExistsResponseDTO> checkPetsittersExists(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        return ResponseEntity.ok(
+          petsitterService.existsPetsitter(uid)
+        );
+    }
+
     @GetMapping("/operatingTime/{petsitterId}")
     public ResponseEntity<OperatingTimeResponseDTO> getOperatingTime(
             @PathVariable String petsitterId

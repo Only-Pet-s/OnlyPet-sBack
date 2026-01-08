@@ -2,6 +2,7 @@ package com.op.back.petsitter.service;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
+import com.op.back.fcm.service.FcmService;
 import com.op.back.petsitter.dto.*;
 import com.op.back.petsitter.exception.ReservationException;
 import com.op.back.petsitter.util.PaymentUtil;
@@ -21,10 +22,11 @@ import java.util.concurrent.ExecutionException;
 public class ReservationService {
 
     private final Firestore firestore;
+    private final FcmService fcmService;
 
     public String createReservation(String uid, ReservationRequestDTO req) {
         try {
-            return firestore.runTransaction(transaction -> {
+            Map<String,Object> result = firestore.runTransaction(transaction -> {
 
                 QuerySnapshot snapshots =
                         transaction.get(
@@ -112,9 +114,21 @@ public class ReservationService {
                 );
 
                 transaction.set(ref, data);
-                return ref.getId();
+                Map<String, Object> res = new HashMap<>();
+                res.put("reservationId", ref.getId());
+                res.put("buyerUid", uid);
+                res.put("price", String.valueOf(req.getPrice()));
+
+                return res;
             }).get();
 
+            fcmService.sendReservationCreated(
+                    (String) result.get("buyerUid"),
+                    (String) result.get("price"),
+                    (String) result.get("reservationId")
+            );
+
+            return (String) result.get("reservationId");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -213,7 +227,8 @@ public class ReservationService {
                 firestore.collection("reservations")
                         .document(reservationId);
 
-        return firestore.runTransaction(tx -> {
+        Map<String, Object> result =
+        firestore.runTransaction(tx -> {
 
             DocumentSnapshot snap = tx.get(ref).get();
 
@@ -225,7 +240,8 @@ public class ReservationService {
                 throw new ReservationException("예약 취소 권한이 없습니다.");
             }
 
-            if (!"RESERVED".equals(snap.getString("reservationStatus"))) {
+            if (!("RESERVED".equals(snap.getString("reservationStatus")) ||
+                    "ACCEPTED".equals(snap.getString("reservationStatus")))) {
                 throw new ReservationException("취소 가능한 예약이 아닙니다.");
             }
 
@@ -250,13 +266,34 @@ public class ReservationService {
                     "canceledAt", Timestamp.now()
             );
 
-            return new CancelReservationResponseDTO(
+            Map<String, Object> res = new HashMap<>();
+            res.put("response", new CancelReservationResponseDTO(
                     reservationId,
                     price,
                     fee,
                     refundAmount
-            );
+            ));
+            res.put("buyerUid", snap.getString("userUid"));
+            res.put("petsitterId", snap.getString("petsitterId"));
+            res.put("refundAmount", refundAmount);
+
+            return res;
         }).get();
+
+        fcmService.sendReservationCancelled(
+                (String) result.get("buyerUid"),
+                (String) result.get("petsitterId"),
+                reservationId
+        );
+
+        fcmService.sendReservationCancelledRefund(
+                (String) result.get("buyerUid"),
+                (String) result.get("petsitterId"),
+                String.valueOf(result.get("refundAmount")),
+                reservationId
+        );
+
+        return (CancelReservationResponseDTO) result.get("response");
     }
 
     public List<ReadUserReservationDTO> getUserReservation(String uid) {
@@ -537,6 +574,7 @@ public class ReservationService {
 
     public void acceptReservation(String petsitterId, String reservationId){
         try{
+            Map<String, String> acceptInfo=
             firestore.runTransaction(tx -> {
 
                 DocumentReference ref =
@@ -561,9 +599,19 @@ public class ReservationService {
                         "reservationStatus", "ACCEPTED",
                         "acceptedAt", Timestamp.now()
                 );
+                Map<String, String> result = new HashMap<>();
+                result.put("buyerUid", doc.getString("userUid"));
+                result.put("petsitterUid", petsitterId);
+                result.put("reservationId", reservationId);
 
-                return null;
+                return result;
             }).get();
+
+            fcmService.sendReservationAccepted(
+                    acceptInfo.get("buyerUid"),
+                    acceptInfo.get("petsitterUid"),
+                    acceptInfo.get("reservationId")
+            );
         }catch(Exception e){
             throw new RuntimeException(e);
         }
@@ -572,6 +620,7 @@ public class ReservationService {
     public void rejectReservation(String petsitterUid, String reservationId) {
 
         try {
+            Map<String, String> rejectInfo=
             firestore.runTransaction(tx -> {
 
                 DocumentReference ref =
@@ -624,8 +673,19 @@ public class ReservationService {
                         "canceledAt", Timestamp.now()
                 );
 
-                return null;
+                Map<String, String> result = new HashMap<>();
+                result.put("buyerUid", doc.getString("userUid"));
+                result.put("petsitterUid", petsitterUid);
+                result.put("reservationId", reservationId);
+
+                return result;
             }).get();
+
+            fcmService.sendReservationRejected(
+                    rejectInfo.get("buyerUid"),
+                    rejectInfo.get("petsitterUid"),
+                    rejectInfo.get("reservationId")
+            );
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -661,7 +721,7 @@ public class ReservationService {
 
         // 2. 중복 환불 방지
         if ("REFUNDED".equals(paymentStatus)) {
-            return; // 이미 환불됨 -> idempotent
+            return;
         }
 
         // 3. 가상 환불 처리
@@ -669,6 +729,14 @@ public class ReservationService {
                 "paymentStatus", "REFUNDED",
                 "refundAmount", refundAmount,
                 "refundAt", Timestamp.now()
+        );
+
+        // 4. 환불 알림
+        fcmService.sendRefund(
+                snap.getString("userUid"),
+                snap.getString("petsitterId"),
+                String.valueOf(snap.getLong("price")),
+                reservationRef.getId()
         );
     }
 }

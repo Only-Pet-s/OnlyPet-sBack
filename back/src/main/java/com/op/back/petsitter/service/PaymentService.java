@@ -4,6 +4,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
+import com.op.back.fcm.service.FcmService;
 import com.op.back.petsitter.dto.PaymentReadyResponseDTO;
 import com.op.back.petsitter.exception.ReservationException;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class PaymentService {
     private final Firestore firestore;
+    private final FcmService fcmService;
 
     public PaymentReadyResponseDTO readyPayment(String reservationId){
 
@@ -85,6 +87,16 @@ public class PaymentService {
 
             return null;
         }).get();
+
+        DocumentSnapshot paymentInfo = firestore.collection("reservations").document(reservationId).get().get();
+
+        String buyerUid = paymentInfo.getString("userUid");
+        String petsitterId = paymentInfo.getString("petsitterId");
+        String price = String.valueOf(paymentInfo.getLong("price"));
+        String resultPaymentId = paymentInfo.getString("paymentId");
+
+        fcmService.sendPaymentCompleted(buyerUid,petsitterId,price,resultPaymentId);
+        fcmService.sendReservationReceived(buyerUid,petsitterId,reservationId);
     }
 
     public void paymentCancel(String reservationId) throws Exception {
@@ -108,6 +120,13 @@ public class PaymentService {
 
             return null;
         }).get();
-    }
+        DocumentSnapshot refundInfo = firestore.collection("reservations").document(reservationId).get().get();
 
+        String buyerUid = refundInfo.getString("userUid");
+        String petsitterId = refundInfo.getString("petsitterId");
+        String price = String.valueOf(refundInfo.getLong("price"));
+        String resultPaymentId = refundInfo.getString("paymentId");
+
+        fcmService.sendRefund(buyerUid,petsitterId,price,resultPaymentId);
+    }
 }

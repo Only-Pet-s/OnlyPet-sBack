@@ -38,8 +38,6 @@ public class PaymentController {
         ));
     }
 
-
-
     @PostMapping("/success")
     public ResponseEntity<String> success(
             @RequestBody PaymentSuccessRequestDTO req
