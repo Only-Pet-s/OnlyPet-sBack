@@ -126,7 +126,7 @@ public class LectureServiceImpl implements LectureService {
      * 강의 상세 조회
      */
     @Override
-    public LectureDetailResponse getLecture(String lectureId) {
+    public LectureDetailResponse getLecture(String lectureId,String currentUid) {
         Lecture lecture = lectureRepository.findById(lectureId)
                 .orElseThrow(() -> new IllegalArgumentException("강의를 찾을 수 없습니다."));
 
@@ -139,12 +139,17 @@ public class LectureServiceImpl implements LectureService {
                 lecture.getThumbnailUrl(),
                 lecture.getLecturerUid(),
                 lecture.getLecturerName(),
+                lecture.getDifficulty(),
+                lecture.getLearningObjectives(),
                 lecture.isAdminApproved(),
                 lecture.isPublished(),
                 lecture.getTags(),
+                lecture.getVideoCount(),
+                lecture.getTotalDurationMinutes(),
                 lecture.getRating(),
                 lecture.getReviewCount(),
-                lecture.getCreatedAt().toDate().toInstant()
+                lecture.getCreatedAt().toDate().toInstant().toString(),
+                List.of()
         );
     }
 
@@ -164,16 +169,7 @@ public class LectureServiceImpl implements LectureService {
     }
 
     private LectureListItemResponse toListItem(Lecture lecture) {
-        return new LectureListItemResponse(
-                lecture.getLectureId(),
-                lecture.getTitle(),
-                lecture.getThumbnailUrl(),
-                lecture.getLecturerUid(),
-                lecture.getLecturerName(),
-                lecture.getRating(),
-                lecture.getPrice(),
-                lecture.getTags()
-        );
+        return LectureListItemResponse.from(lecture);
     }
     
     @Override
@@ -188,7 +184,7 @@ public class LectureServiceImpl implements LectureService {
     */
     @Override
     public void uploadVideo(String lectureId, MultipartFile video, MultipartFile thumbnail, String title, 
-                String description, boolean preview, String currentUid) {
+                String description, boolean preview, Integer durationSeconds, String currentUid) {
         // 강의 테마 존재 확인
         Lecture lecture = lectureRepository.findById(lectureId)
                 .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
@@ -298,13 +294,14 @@ public class LectureServiceImpl implements LectureService {
                         v.getVideoId(),
                         v.getTitle(),
                         v.getDescription(),
+                        v.getDuration(),
                         v.getOrder(),
                         v.getVideoUrl(),
                         v.getThumbnailUrl(),
                         v.isPreview(),
                         purchased || v.isPreview(), // 미리보기는 구매 없이 가능
                         v.isDeleted(),
-                        v.getCreatedAt().toDate().toInstant()
+                        v.getCreatedAt().toDate().toInstant().toString()
                 ))
                 .toList();
     }

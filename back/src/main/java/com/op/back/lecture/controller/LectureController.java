@@ -42,10 +42,11 @@ public class LectureController {
             @RequestParam(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestParam String title,
             @RequestParam String description,
+            @RequestParam(value = "durationSeconds", required = false) Integer durationSeconds,
             @RequestParam(defaultValue = "false") boolean preview
     ) {
         lectureService.uploadVideo(
-                lectureId, video, thumbnail, title, description, preview, currentUid()
+                lectureId, video, thumbnail, title, description, preview, durationSeconds, currentUid()
         );
     }
 
@@ -87,7 +88,7 @@ public class LectureController {
     // 강의 상세 조회
     @GetMapping("/{lectureId}")
     public LectureDetailResponse detail(@PathVariable String lectureId) {
-        return lectureService.getLecture(lectureId);
+        return lectureService.getLecture(lectureId, currentUid());
     }
 
     // 특정 강의자 강의 목록 조회
