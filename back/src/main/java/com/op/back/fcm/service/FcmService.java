@@ -146,7 +146,43 @@ public class FcmService {
                 "예약 도착 알림",
                 buyerName + "님으로 부터 예약 요청이 도착했습니다. 예약 수락 또는 거절을 해주세요.",
                 Map.of(
-                        "type", FcmType.RESERVATION_CREATED.name(),
+                        "type", FcmType.RESERVATION_RECEIVED.name(),
+                        "reservationId", reservationId
+                )
+        );
+    }
+
+    // 예약 수락 알림
+    public void sendReservationAccepted(
+            String buyerUid,
+            String petsitterUid,
+            String reservationId
+    ){
+        String petsitterName = getNickname(petsitterUid, "펫시터");
+
+        send(
+                buyerUid,
+                "예약 확정 알림", petsitterName + "님이 예약을 수락하셨습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_ACCEPTED.name(),
+                        "reservationId", reservationId
+                )
+        );
+    }
+
+    // 예약 거절 알림
+    public void sendReservationRejected(
+            String buyerUid,
+            String petsitterUid,
+            String reservationId
+    ){
+        String petsitterName = getNickname(petsitterUid, "펫시터");
+
+        send(
+                buyerUid,
+                "예약 거절 알림", petsitterName + "님이 예약을 거절하셨습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CANCELED.name(),
                         "reservationId", reservationId
                 )
         );

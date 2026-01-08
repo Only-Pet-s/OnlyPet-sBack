@@ -551,6 +551,7 @@ public class ReservationService {
 
     public void acceptReservation(String petsitterId, String reservationId){
         try{
+            Map<String, String> acceptInfo=
             firestore.runTransaction(tx -> {
 
                 DocumentReference ref =
@@ -575,9 +576,19 @@ public class ReservationService {
                         "reservationStatus", "ACCEPTED",
                         "acceptedAt", Timestamp.now()
                 );
+                Map<String, String> result = new HashMap<>();
+                result.put("buyerUid", doc.getString("userUid"));
+                result.put("petsitterUid", petsitterId);
+                result.put("reservationId", reservationId);
 
-                return null;
+                return result;
             }).get();
+
+            fcmService.sendReservationAccepted(
+                    acceptInfo.get("buyerUid"),
+                    acceptInfo.get("petsitterUid"),
+                    acceptInfo.get("reservationId")
+            );
         }catch(Exception e){
             throw new RuntimeException(e);
         }
@@ -586,6 +597,7 @@ public class ReservationService {
     public void rejectReservation(String petsitterUid, String reservationId) {
 
         try {
+            Map<String, String> rejectInfo=
             firestore.runTransaction(tx -> {
 
                 DocumentReference ref =
@@ -638,8 +650,19 @@ public class ReservationService {
                         "canceledAt", Timestamp.now()
                 );
 
-                return null;
+                Map<String, String> result = new HashMap<>();
+                result.put("buyerUid", doc.getString("userUid"));
+                result.put("petsitterUid", petsitterUid);
+                result.put("reservationId", reservationId);
+
+                return result;
             }).get();
+
+            fcmService.sendReservationRejected(
+                    rejectInfo.get("buyerUid"),
+                    rejectInfo.get("petsitterUid"),
+                    rejectInfo.get("reservationId")
+            );
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -683,6 +706,14 @@ public class ReservationService {
                 "paymentStatus", "REFUNDED",
                 "refundAmount", refundAmount,
                 "refundAt", Timestamp.now()
+        );
+
+        // 4. 환불 알림
+        fcmService.sendRefund(
+                snap.getString("userUid"),
+                snap.getString("petsitterId"),
+                String.valueOf(snap.getLong("price")),
+                reservationRef.getId()
         );
     }
 }
