@@ -140,7 +140,18 @@ public class FcmService {
             String reservationId
     ){
         String buyerName = getNickname(buyerUid, "사용자");
+        String psName = getNickname(petsitterUid, "펫시터");
+        send(
+                buyerUid,
+                "예약 요청 성공 알림",
+                psName + "님에게 예약 요청이 성공하였습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_RECEIVED.name(),
+                        "reservationId", reservationId
+                )
+        );
 
+        // 예약 도착
         send(
                 petsitterUid,
                 "예약 도착 알림",
@@ -162,7 +173,7 @@ public class FcmService {
 
         send(
                 buyerUid,
-                "예약 확정 알림", petsitterName + "님이 예약을 수락하셨습니다.",
+                "예약 확정 알림", "[펫시터] " + petsitterName + "님이 예약을 수락하셨습니다.",
                 Map.of(
                         "type", FcmType.RESERVATION_ACCEPTED.name(),
                         "reservationId", reservationId
@@ -180,7 +191,67 @@ public class FcmService {
 
         send(
                 buyerUid,
-                "예약 거절 알림", petsitterName + "님이 예약을 거절하셨습니다.",
+                "예약 거절 알림", "[펫시터] " + petsitterName + "님이 예약을 거절하셨습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CANCELED.name(),
+                        "reservationId", reservationId
+                )
+        );
+    }
+
+    // 예약 취소 알림
+    public void sendReservationCancelled(
+            String buyerUid,
+            String petsitterUid,
+            String reservationId
+    ){
+        String buyerName = getNickname(buyerUid, "사용자");
+        String psName = getNickname(petsitterUid, "사용자");
+        send(
+                buyerUid,
+                "예약 취소 알림",
+                psName + "님에 대한 예약 취소가 완료되었습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CANCELED.name(),
+                        "reservationId", reservationId
+                )
+        );
+
+        // 예약 도착
+        send(
+                petsitterUid,
+                "예약 취소 알림",
+                buyerName + "님의 예약이 취소되었습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CANCELED.name(),
+                        "reservationId", reservationId
+                )
+        );
+    }
+
+    // 예약 취소에 대한 환불 알림
+    public void sendReservationCancelledRefund(
+            String buyerUid,
+            String petsitterUid,
+            String refundAmount,
+            String reservationId
+    ){
+        String buyerName = getNickname(buyerUid, "사용자");
+        send(
+                buyerUid,
+                "예약 취소에 대한 환불 안내",
+                refundAmount + "원이 환불되었습니다.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CANCELED.name(),
+                        "reservationId", reservationId
+                )
+        );
+
+        // 예약 도착
+        send(
+                petsitterUid,
+                buyerName + "님의 예약 취소에 대한 환수 안내",
+                refundAmount + "원이 환수되었습니다.",
                 Map.of(
                         "type", FcmType.RESERVATION_CANCELED.name(),
                         "reservationId", reservationId

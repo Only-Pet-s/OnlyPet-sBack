@@ -227,7 +227,8 @@ public class ReservationService {
                 firestore.collection("reservations")
                         .document(reservationId);
 
-        return firestore.runTransaction(tx -> {
+        Map<String, Object> result =
+        firestore.runTransaction(tx -> {
 
             DocumentSnapshot snap = tx.get(ref).get();
 
@@ -239,7 +240,8 @@ public class ReservationService {
                 throw new ReservationException("예약 취소 권한이 없습니다.");
             }
 
-            if (!"RESERVED".equals(snap.getString("reservationStatus"))) {
+            if (!("RESERVED".equals(snap.getString("reservationStatus")) ||
+                    "ACCEPTED".equals(snap.getString("reservationStatus")))) {
                 throw new ReservationException("취소 가능한 예약이 아닙니다.");
             }
 
@@ -264,13 +266,34 @@ public class ReservationService {
                     "canceledAt", Timestamp.now()
             );
 
-            return new CancelReservationResponseDTO(
+            Map<String, Object> res = new HashMap<>();
+            res.put("response", new CancelReservationResponseDTO(
                     reservationId,
                     price,
                     fee,
                     refundAmount
-            );
+            ));
+            res.put("buyerUid", snap.getString("userUid"));
+            res.put("petsitterId", snap.getString("petsitterId"));
+            res.put("refundAmount", refundAmount);
+
+            return res;
         }).get();
+
+        fcmService.sendReservationCancelled(
+                (String) result.get("buyerUid"),
+                (String) result.get("buyerUid"),
+                reservationId
+        );
+
+        fcmService.sendReservationCancelledRefund(
+                (String) result.get("buyerUid"),
+                (String) result.get("buyerUid"),
+                String.valueOf(result.get("refundAmount")),
+                reservationId
+        );
+
+        return (CancelReservationResponseDTO) result.get("response");
     }
 
     public List<ReadUserReservationDTO> getUserReservation(String uid) {
