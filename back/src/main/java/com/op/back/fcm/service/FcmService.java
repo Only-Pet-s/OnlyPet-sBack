@@ -108,7 +108,24 @@ public class FcmService {
         );
     }
 
-    // 예약 관련 알림 필요: 거절, 수락, 완료, 취소
+    // 예약 관련 알림 필요: 생성, 거절, 수락, 완료, 취소
+
+    // 예약 생성 시에는 예약한 유저에게만 결제 요청 알림
+    public void sendReservationCreated(
+            String buyerUid,
+            String price,
+            String reservationId
+    ){
+        send(
+                buyerUid,
+                "예약 생성 알림",
+                price + "원 결제해주세요.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CREATED.name(),
+                        "reservationId", reservationId
+                )
+        );
+    }
 
     // fcm 푸시 알림 공통 메소드
     private void send(

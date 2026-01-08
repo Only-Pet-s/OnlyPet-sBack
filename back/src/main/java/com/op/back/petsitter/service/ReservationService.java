@@ -2,6 +2,7 @@ package com.op.back.petsitter.service;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.firestore.*;
+import com.op.back.fcm.service.FcmService;
 import com.op.back.petsitter.dto.*;
 import com.op.back.petsitter.exception.ReservationException;
 import com.op.back.petsitter.util.PaymentUtil;
@@ -21,10 +22,11 @@ import java.util.concurrent.ExecutionException;
 public class ReservationService {
 
     private final Firestore firestore;
+    private final FcmService fcmService;
 
     public String createReservation(String uid, ReservationRequestDTO req) {
         try {
-            return firestore.runTransaction(transaction -> {
+            Map<String,Object> result = firestore.runTransaction(transaction -> {
 
                 QuerySnapshot snapshots =
                         transaction.get(
@@ -112,9 +114,21 @@ public class ReservationService {
                 );
 
                 transaction.set(ref, data);
-                return ref.getId();
+                Map<String, Object> res = new HashMap<>();
+                res.put("reservationId", ref.getId());
+                res.put("buyerUid", uid);
+                res.put("price", String.valueOf(req.getPrice()));
+
+                return res;
             }).get();
 
+            fcmService.sendReservationCreated(
+                    (String) result.get("buyerUid"),
+                    (String) result.get("price"),
+                    (String) result.get("reservationId")
+            );
+
+            return (String) result.get("reservationId");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
