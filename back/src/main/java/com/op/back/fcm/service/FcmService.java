@@ -72,7 +72,7 @@ public class FcmService {
         send(
                 buyerUid,
                 "결제 완료",
-                petsitterName + "에게 " + price + "원이 결제되었습니다.",
+                "[펫시터] " + petsitterName + "에게 " + price + "원이 결제되었습니다.",
                 Map.of(
                         "type", FcmType.PAYMENT_COMPLETED.name(),
                         "paymentId", paymentId
@@ -108,7 +108,7 @@ public class FcmService {
         );
     }
 
-    // 예약 관련 알림 필요: 생성, 거절, 수락, 완료, 취소
+    // 예약 관련 알림 필요: 생성, 도착, 완료, 취소, 수락, 거절
 
     // 예약 생성 시에는 예약한 유저에게만 결제 요청 알림
     public void sendReservationCreated(
@@ -120,6 +120,25 @@ public class FcmService {
                 buyerUid,
                 "예약 생성 알림",
                 price + "원 결제해주세요.",
+                Map.of(
+                        "type", FcmType.RESERVATION_CREATED.name(),
+                        "reservationId", reservationId
+                )
+        );
+    }
+
+    // 사용자가 결제를 완료하고 펫시터에게 알림이 도착했을 때
+    public void sendReservationReceived(
+            String buyerUid,
+            String petsitterUid,
+            String reservationId
+    ){
+        String buyerName = getNickname(buyerUid, "사용자");
+
+        send(
+                petsitterUid,
+                "예약 도착 알림",
+                buyerName + "님으로 부터 예약 요청이 도착했습니다. 예약 수락 또는 거절을 해주세요.",
                 Map.of(
                         "type", FcmType.RESERVATION_CREATED.name(),
                         "reservationId", reservationId

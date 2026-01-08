@@ -96,6 +96,7 @@ public class PaymentService {
         String resultPaymentId = paymentInfo.getString("paymentId");
 
         fcmService.sendPaymentCompleted(buyerUid,petsitterId,price,resultPaymentId);
+        fcmService.sendReservationReceived(buyerUid,petsitterId,reservationId);
     }
 
     public void paymentCancel(String reservationId) throws Exception {
