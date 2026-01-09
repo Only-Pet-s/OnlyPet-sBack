@@ -17,6 +17,7 @@ import com.op.back.lecture.dto.LectureListItemResponse;
 import com.op.back.lecture.dto.LectureVideoResponse;
 import com.op.back.lecture.model.Lecture;
 import com.op.back.lecture.model.LectureVideo;
+import com.op.back.lecture.repository.InstructorRepository;
 import com.op.back.lecture.repository.LectureRepository;
 import com.op.back.lecture.repository.UserRepository;
 import com.op.back.lecture.search.LectureSearchDocument;
@@ -39,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class LectureServiceImpl implements LectureService {
     private final LectureRepository lectureRepository;
     private final UserRepository userRepository;
+    private final InstructorRepository instructorRepository;
     private final LectureSearchService lectureSearchService;
     private final ElasticsearchClient elasticsearchClient;
     private final LectureAccessService lectureAccessService;
@@ -86,6 +88,8 @@ public class LectureServiceImpl implements LectureService {
 
         lectureRepository.save(lecture);
 
+        //강사 통계 반영
+        instructorRepository.incrementLectureCount(currentUid);
 
         LectureSearchDocument doc = new LectureSearchDocument();
         doc.setLectureId(lecture.getLectureId());
