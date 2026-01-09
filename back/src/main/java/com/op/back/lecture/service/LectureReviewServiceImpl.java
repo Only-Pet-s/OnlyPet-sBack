@@ -29,7 +29,9 @@ public class LectureReviewServiceImpl implements LectureReviewService {
     private final UserRepository userRepository;
     private final LectureReviewRepository lectureReviewRepository;
     private final LectureAccessService lectureAccessService;
+    private final InstructorService instructorService;
 
+    //강의 리뷰 생성
     @Override
     public LectureReviewResponse create(String lectureId, LectureReviewCreateRequest req, String currentUid) {
 
@@ -60,9 +62,14 @@ public class LectureReviewServiceImpl implements LectureReviewService {
 
         lectureReviewRepository.createReview(lectureId, currentUid, review, lecture.getTitle());
 
+        // 강의 리뷰 기준으로 강사 집계 갱신
+        instructorService.syncRatingFromLectures(lecture.getLecturerUid());
+
         return toResponse(review, currentUid);
     }
 
+
+    //리뷰 리스트 가져오기
     @Override
     public LectureReviewListResponse list(String lectureId, int limit, int offset, String currentUid) {
 
@@ -82,12 +89,14 @@ public class LectureReviewServiceImpl implements LectureReviewService {
         );
     }
 
+    //내가 작성한 리뷰 가져오기
     @Override
     public LectureReviewResponse getMine(String lectureId, String currentUid) {
         LectureReview review = lectureReviewRepository.findReview(lectureId, currentUid)
                 .orElseThrow(() -> new IllegalStateException("작성한 리뷰가 없습니다."));
         return toResponse(review, currentUid);
     }
+
 
     @Override
     public List<LectureReviewResponse> getMyReviews(String uid) {
@@ -101,6 +110,7 @@ public class LectureReviewServiceImpl implements LectureReviewService {
                 .toList();
     }
     
+    //리뷰 업데이트
     @Override
     public LectureReviewResponse update(String lectureId, LectureReviewUpdateRequest req, String currentUid) {
 
@@ -123,9 +133,12 @@ public class LectureReviewServiceImpl implements LectureReviewService {
 
         lectureReviewRepository.updateReview(lectureId, currentUid, review, lecture.getTitle());
 
+        instructorService.syncRatingFromLectures(lecture.getLecturerUid());
+
         return toResponse(review, currentUid);
     }
 
+    //리뷰 삭제
     @Override
     public void delete(String lectureId, String currentUid) {
         lectureReviewRepository.deleteReview(lectureId, currentUid);

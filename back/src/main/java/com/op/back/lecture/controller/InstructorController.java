@@ -1,6 +1,7 @@
 package com.op.back.lecture.controller;
 
 import com.op.back.lecture.dto.InstructorCreateRequest;
+import com.op.back.lecture.dto.InstructorUpdateRequest;
 import com.op.back.lecture.model.Instructor;
 import com.op.back.lecture.service.InstructorService;
 import lombok.RequiredArgsConstructor;
@@ -21,19 +22,21 @@ public class InstructorController {
                 .getPrincipal();
     }
 
-    // 강사 등록
+    // 강사 등록 (본인)
     @PostMapping
-    public void register(
-            @RequestBody InstructorCreateRequest req
-    ) {
-        instructorService.registerInstructor(req, currentUid());
+    public void register(@RequestBody InstructorCreateRequest req) {
+        instructorService.registerInstructor(currentUid(), req);
+    }
+
+    // 강사 정보 수정 (본인)
+    @PutMapping("/me")
+    public Instructor updateMe(@RequestBody InstructorUpdateRequest req) {
+        return instructorService.updateMyInstructor(currentUid(), req);
     }
 
     // 강사 정보 조회
     @GetMapping("/{instructorUid}")
-    public Instructor get(
-            @PathVariable String instructorUid
-    ) {
+    public Instructor get(@PathVariable String instructorUid) {
         return instructorService.getInstructor(instructorUid);
     }
 }

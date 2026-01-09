@@ -6,6 +6,7 @@ import com.op.back.lecture.dto.MyLectureItemResponse;
 import com.op.back.lecture.dto.MyLectureSummaryResponse;
 import com.op.back.lecture.model.Lecture;
 import com.op.back.lecture.model.UserLecture;
+import com.op.back.lecture.repository.InstructorRepository;
 import com.op.back.lecture.repository.LectureRepository;
 import com.op.back.lecture.repository.UserLectureRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,9 @@ public class MyLectureServiceImpl implements MyLectureService {
 
     private final UserLectureRepository userLectureRepository;
     private final LectureRepository lectureRepository;
+    private final InstructorRepository instructorRepository;
 
+    //강의 실행
     @Override
     public void enroll(String lectureId, String uid) {
         // 강의 존재 확인
@@ -40,6 +43,7 @@ public class MyLectureServiceImpl implements MyLectureService {
         userLectureRepository.save(uid, userLecture);
     }
 
+    //내 강의 가져오기
     @Override
     public MyLectureSummaryResponse getMyLectures(String uid) {
         List<UserLecture> items = userLectureRepository.findAll(uid);
@@ -91,16 +95,23 @@ public class MyLectureServiceImpl implements MyLectureService {
         );
     }
 
+    //강의 진행도 업데이트
     @Override
     public void updateProgress(String lectureId, String uid, LectureProgressUpdateRequest request) {
+        // 강의 존재 확인
+        Lecture lecture = lectureRepository.findById(lectureId)
+                .orElseThrow(() -> new IllegalArgumentException("강의를 찾을 수 없습니다."));
+
         // 수강 기록이 없으면 자동 생성(UX)
-        UserLecture userLecture = userLectureRepository.findById(uid, lectureId)
-                .orElseGet(() -> {
-                    UserLecture ul = new UserLecture();
-                    ul.setLectureId(lectureId);
-                    ul.setEnrolledAt(Timestamp.now());
-                    return ul;
-                });
+        var existing = userLectureRepository.findById(uid, lectureId);
+        boolean firstStart = existing.isEmpty();
+
+        UserLecture userLecture = existing.orElseGet(() -> {
+            UserLecture ul = new UserLecture();
+            ul.setLectureId(lectureId);
+            ul.setEnrolledAt(Timestamp.now());
+            return ul;
+        });
 
         if (request.watchedSecondsDelta() != null) {
             int next = Math.max(0, userLecture.getTotalWatchedSeconds() + request.watchedSecondsDelta());
@@ -117,5 +128,10 @@ public class MyLectureServiceImpl implements MyLectureService {
 
         userLecture.setLastWatchedAt(Timestamp.now());
         userLectureRepository.save(uid, userLecture);
+
+        // "수강 시작" 시점에 강사 totalStudents 증가(중복 제거)
+        if (firstStart) {
+            instructorRepository.addStudentIfNew(lecture.getLecturerUid(), uid);
+        }
     }
 }

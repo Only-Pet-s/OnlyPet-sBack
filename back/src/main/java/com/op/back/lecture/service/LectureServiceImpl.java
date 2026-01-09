@@ -266,7 +266,6 @@ public class LectureServiceImpl implements LectureService {
         lectureVideo.setDescription(description);
         lectureVideo.setOrder(order);
         lectureVideo.setVideoUrl(videoUrl);
-
         // durationSeconds는 "초 단위"로 받는다. (클라이언트가 모르면 null로 보낼 수 있음)
         lectureVideo.setDuration(
                 durationSeconds != null ? Math.max(durationSeconds, 0) : 0
@@ -281,6 +280,12 @@ public class LectureServiceImpl implements LectureService {
 
         // videoCount +1
         lectureRepository.incrementVideoCount(lectureId);
+
+        // totalDurationMinutes 집계(초 -> 분, 올림)
+        if (durationSeconds != null) {
+            int minutes = (durationSeconds + 59) / 60;
+            lectureRepository.incrementTotalDurationMinutes(lectureId, minutes);
+        }
     }
 
     /*
@@ -429,5 +434,8 @@ public class LectureServiceImpl implements LectureService {
 
         lectureRepository.softDeleteVideo(lectureId, videoId);
         lectureRepository.decrementVideoCount(lectureId);
+
+        int minutes = (lectureVideo.getDuration() + 59) / 60;
+        lectureRepository.incrementTotalDurationMinutes(lectureId, -minutes);
     }
 }

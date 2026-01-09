@@ -23,6 +23,7 @@ public class PurchaseServiceImpl implements PurchaseService {
     private final PurchaseRepository purchaseRepository;
     private final LectureRepository lectureRepository;
 
+    //강의 구매하기
     @Override
     public PurchaseResponse purchaseLecture(String uid, LecturePurchaseRequest request) {
         var lecture = lectureRepository.findById(request.lectureId())
@@ -43,11 +44,13 @@ public class PurchaseServiceImpl implements PurchaseService {
         return toResponse(p);
     }
 
+    //access에서 사용
     @Override
     public boolean hasLecturePurchase(String uid, String lectureId) {
         return purchaseRepository.existsLecturePurchase(uid, lectureId);
     }
 
+    //내가 구매한 내역
     @Override
     public List<PurchaseResponse> getMyPurchases(String uid) {
         return purchaseRepository.findAll(uid).stream().map(this::toResponse).toList();
