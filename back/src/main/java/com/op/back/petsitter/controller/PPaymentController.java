@@ -19,7 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/petsitters/payment")
 @RequiredArgsConstructor
-public class PaymentController {
+public class PPaymentController {
     private final PaymentService paymentService;
 
     // ready 이후 사용자가 결제 완료 할 것인지 취소할 것인지 선택해야함
