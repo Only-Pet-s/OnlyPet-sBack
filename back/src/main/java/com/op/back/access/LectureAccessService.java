@@ -33,16 +33,16 @@ public class LectureAccessService {
             return new LectureAccessResult(true, false, false, LectureAccessType.FREE);
         }
 
-        // 구독
-        boolean subscribed = subscriptionService.hasValidAccess(uid, lecture);
-        if (subscribed) {
-            return new LectureAccessResult(true, false, true, LectureAccessType.SUBSCRIPTION);
-        }
-
         // 단건 구매
         boolean purchased = purchaseService.hasLecturePurchase(uid, lecture.getLectureId());
         if (purchased) {
             return new LectureAccessResult(true, true, false, LectureAccessType.PURCHASE);
+        }
+
+        // 구독
+        boolean subscribed = subscriptionService.hasValidAccess(uid, lecture);
+        if (subscribed) {
+            return new LectureAccessResult(true, false, true, LectureAccessType.SUBSCRIPTION);
         }
 
         return LectureAccessResult.none();
