@@ -49,6 +49,16 @@ public class PetsitterController {
         );
     }
 
+    @GetMapping("/getMyInfo")
+    public ResponseEntity<PetsitterCardDTO> getMyInfo(
+            @RequestHeader("Authorization") String authHeader
+    ){
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+        return ResponseEntity.ok(
+                petsitterService.getMyInfoPs(uid)
+        );
+    }
+
     // 펫시터 정보 등록
     @PostMapping("/register")
     public ResponseEntity<Void> registerPetsitter(

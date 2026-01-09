@@ -52,6 +52,41 @@ public class PetsitterService {
                 .toList();
     }
 
+    public PetsitterCardDTO getMyInfoPs(String petsitterId){
+        DocumentSnapshot snap = null;
+        try{
+            snap = firestore.collection("petsitters")
+                    .document(petsitterId)
+                    .get().get();
+        }catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (!snap.exists()) {
+            throw new IllegalStateException("펫시터를 찾을 수 없습니다.");
+        }
+//
+//        DocumentSnapshot user = null;
+//        try {
+//            user = firestore.collection("users").document(petsitterId).get().get();
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        } catch (ExecutionException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//        Boolean isPetsitter = user.getBoolean("petsitter");
+//        if (isPetsitter == null || !isPetsitter) {
+//            throw new IllegalStateException("펫시터 권한이 없는 사용자입니다.");
+//        }
+        PetsitterEntity entity =
+                snap.toObject(PetsitterEntity.class);
+
+        return toDTO(entity, snap.getDouble("lat"), snap.getDouble("lng"));
+    }
+
     public PetsitterCardDTO getPetsitter(String petsitterId, Double lat, Double lng) {
         DocumentSnapshot snapshot = null;
         try {
