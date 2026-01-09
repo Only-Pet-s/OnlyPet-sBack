@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.Timestamp;
+import com.op.back.access.LectureAccessResult;
+import com.op.back.access.LectureAccessService;
 import com.op.back.auth.model.AuthUser;
 import com.op.back.auth.model.User;
 import com.op.back.lecture.dto.LectureCreateRequest;
@@ -39,6 +41,7 @@ public class LectureServiceImpl implements LectureService {
     private final UserRepository userRepository;
     private final LectureSearchService lectureSearchService;
     private final ElasticsearchClient elasticsearchClient;
+    private final LectureAccessService lectureAccessService;
     private final S3Client s3Client;
     private final String bucketName = "onlypets-lecture-video";
 
@@ -259,8 +262,14 @@ public class LectureServiceImpl implements LectureService {
         lectureVideo.setDescription(description);
         lectureVideo.setOrder(order);
         lectureVideo.setVideoUrl(videoUrl);
-        lectureVideo.setThumbnailUrl(thumbnailUrl);
+
+        // durationSeconds는 "초 단위"로 받는다. (클라이언트가 모르면 null로 보낼 수 있음)
+        lectureVideo.setDuration(
+                durationSeconds != null ? Math.max(durationSeconds, 0) : 0
+        );
+        
         lectureVideo.setPreview(preview);
+        lectureVideo.setThumbnailUrl(thumbnailUrl);
         lectureVideo.setCreatedAt(Timestamp.now());
         lectureVideo.setDeleted(false);
 
@@ -284,9 +293,9 @@ public class LectureServiceImpl implements LectureService {
         List<LectureVideo> videos =
                 lectureRepository.findVideosByLectureId(lectureId);
 
-        // 3. 구매 여부 판단 (지금은 간단히)
-        boolean purchased = lecture.getLecturerUid().equals(currentUid)
-                || lecture.getPrice() == 0;
+        // 3. 구매 여부 판단
+        LectureAccessResult access = lectureAccessService.check(currentUid, lecture);
+        boolean purchased = access.accessible();
 
         return videos.stream()
                 .filter(v -> !v.isDeleted()) // 삭제된 영상 숨김
