@@ -8,4 +8,6 @@ public class ShortsUpdateRequest {
 
     private String description;
     private List<String> hashtags;
+
+    private Boolean commentAvailable;
 }

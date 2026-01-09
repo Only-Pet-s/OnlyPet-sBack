@@ -1,7 +1,6 @@
 package com.op.back.lecture.dto;
 
 import java.util.List;
-import java.time.Instant;
 
 //강의 상세조회
 public record LectureDetailResponse (
@@ -13,10 +12,15 @@ public record LectureDetailResponse (
     String thumbnailUrl,
     String lecturerUid,
     String lecturerName,
+    String difficulty,
+    List<String> learningObjectives,
     boolean adminApproved,
     boolean published,
     List<String> tags,
+    int videoCount,
+    int totalDurationMinutes,
     double rating,
     int reviewCount,
-    Instant createdAt
+    String createdAt,
+    List<LectureThemeResponse> themes
 ){}

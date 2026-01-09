@@ -50,6 +50,31 @@ public class PostSearchRepository {
         }
     }
 
+    //id기반 검색
+    public List<String> searchPostIds(String keyword, int size) {
+        try {
+            SearchResponse<PostDocument> response = client.search(
+                s -> s
+                    .index(INDEX)
+                    .size(size)
+                    .query(q -> q
+                        .multiMatch(m -> m
+                            .query(keyword)
+                            .fields("content", "hashtags")
+                        )
+                    ),
+                PostDocument.class
+            );
+
+            return response.hits().hits().stream()
+                    .map(hit -> hit.id())
+                    .toList();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Post search failed", e);
+        }
+    }
+
     public void delete(String postId) {
         try {
             client.delete(d -> d

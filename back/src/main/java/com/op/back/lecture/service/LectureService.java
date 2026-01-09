@@ -11,10 +11,12 @@ import java.util.List;
 public interface LectureService {
     String createLecture(LectureCreateRequest req, String currentUid);
     List<LectureListItemResponse> getLectures(int limit, int offset);
-    LectureDetailResponse getLecture(String lectureId);
+    LectureDetailResponse getLecture(String lectureId, String currentUid);
     List<LectureVideoResponse> getLectureVideos(String lectureId, String currentUid);
     List<LectureListItemResponse> getLecturesByLecturer(String lecturerUid, int limit, int offset);
     List<LectureListItemResponse> searchLectures(String keyword,List<String> tags,String category,int limit,int offset);
-    void uploadVideo(String lectureId, MultipartFile video, MultipartFile thumbnail, String title, String description, int order, boolean preview, String currentUid);
+    void uploadVideo(String lectureId, MultipartFile video, MultipartFile thumbnail, String title, String description, boolean preview, Integer durationSeconds, String currentUid);
     void updateVideo(String lectureId,String videoId,String title,String description,Integer order,Boolean preview,MultipartFile video,MultipartFile thumbnail,String currentUid);
+    void deleteVideo(String lectureId, String videoId, String currentUid);    
 }
+
