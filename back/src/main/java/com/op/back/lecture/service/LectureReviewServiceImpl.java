@@ -6,6 +6,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.Timestamp;
+import com.op.back.access.LectureAccessResult;
+import com.op.back.access.LectureAccessService;
 import com.op.back.auth.model.User;
 import com.op.back.lecture.dto.LectureReviewCreateRequest;
 import com.op.back.lecture.dto.LectureReviewListResponse;
@@ -26,7 +28,10 @@ public class LectureReviewServiceImpl implements LectureReviewService {
     private final LectureRepository lectureRepository;
     private final UserRepository userRepository;
     private final LectureReviewRepository lectureReviewRepository;
+    private final LectureAccessService lectureAccessService;
+    private final InstructorService instructorService;
 
+    //강의 리뷰 생성
     @Override
     public LectureReviewResponse create(String lectureId, LectureReviewCreateRequest req, String currentUid) {
 
@@ -36,6 +41,12 @@ public class LectureReviewServiceImpl implements LectureReviewService {
         User user = userRepository.findByUid(currentUid)
                 .orElseThrow(() -> new IllegalStateException("사용자를 찾을 수 없습니다."));
 
+        LectureAccessResult access =
+                        lectureAccessService.check(currentUid, lecture);
+
+        if (!access.accessible()) {
+                throw new IllegalStateException("구매 또는 구독 후 리뷰 작성 가능");
+        }
         // docId = uid 이므로 중복은 transaction에서 막히지만, 빠른 실패를 위해 한번 더
         if (lectureReviewRepository.existsReview(lectureId, currentUid)) {
             throw new IllegalStateException("이미 리뷰를 작성했습니다.");
@@ -51,9 +62,14 @@ public class LectureReviewServiceImpl implements LectureReviewService {
 
         lectureReviewRepository.createReview(lectureId, currentUid, review, lecture.getTitle());
 
+        // 강의 리뷰 기준으로 강사 집계 갱신
+        instructorService.syncRatingFromLectures(lecture.getLecturerUid());
+
         return toResponse(review, currentUid);
     }
 
+
+    //리뷰 리스트 가져오기
     @Override
     public LectureReviewListResponse list(String lectureId, int limit, int offset, String currentUid) {
 
@@ -73,12 +89,14 @@ public class LectureReviewServiceImpl implements LectureReviewService {
         );
     }
 
+    //내가 작성한 리뷰 가져오기
     @Override
     public LectureReviewResponse getMine(String lectureId, String currentUid) {
         LectureReview review = lectureReviewRepository.findReview(lectureId, currentUid)
                 .orElseThrow(() -> new IllegalStateException("작성한 리뷰가 없습니다."));
         return toResponse(review, currentUid);
     }
+
 
     @Override
     public List<LectureReviewResponse> getMyReviews(String uid) {
@@ -92,6 +110,7 @@ public class LectureReviewServiceImpl implements LectureReviewService {
                 .toList();
     }
     
+    //리뷰 업데이트
     @Override
     public LectureReviewResponse update(String lectureId, LectureReviewUpdateRequest req, String currentUid) {
 
@@ -114,9 +133,12 @@ public class LectureReviewServiceImpl implements LectureReviewService {
 
         lectureReviewRepository.updateReview(lectureId, currentUid, review, lecture.getTitle());
 
+        instructorService.syncRatingFromLectures(lecture.getLecturerUid());
+
         return toResponse(review, currentUid);
     }
 
+    //리뷰 삭제
     @Override
     public void delete(String lectureId, String currentUid) {
         lectureReviewRepository.deleteReview(lectureId, currentUid);

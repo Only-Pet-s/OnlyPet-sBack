@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.Timestamp;
+import com.op.back.access.LectureAccessResult;
+import com.op.back.access.LectureAccessService;
 import com.op.back.auth.model.AuthUser;
 import com.op.back.auth.model.User;
 import com.op.back.lecture.dto.LectureCreateRequest;
@@ -15,6 +17,7 @@ import com.op.back.lecture.dto.LectureListItemResponse;
 import com.op.back.lecture.dto.LectureVideoResponse;
 import com.op.back.lecture.model.Lecture;
 import com.op.back.lecture.model.LectureVideo;
+import com.op.back.lecture.repository.InstructorRepository;
 import com.op.back.lecture.repository.LectureRepository;
 import com.op.back.lecture.repository.UserRepository;
 import com.op.back.lecture.search.LectureSearchDocument;
@@ -37,8 +40,10 @@ import lombok.extern.slf4j.Slf4j;
 public class LectureServiceImpl implements LectureService {
     private final LectureRepository lectureRepository;
     private final UserRepository userRepository;
+    private final InstructorRepository instructorRepository;
     private final LectureSearchService lectureSearchService;
     private final ElasticsearchClient elasticsearchClient;
+    private final LectureAccessService lectureAccessService;
     private final S3Client s3Client;
     private final String bucketName = "onlypets-lecture-video";
 
@@ -83,6 +88,8 @@ public class LectureServiceImpl implements LectureService {
 
         lectureRepository.save(lecture);
 
+        //강사 통계 반영
+        instructorRepository.incrementLectureCount(currentUid);
 
         LectureSearchDocument doc = new LectureSearchDocument();
         doc.setLectureId(lecture.getLectureId());
@@ -126,7 +133,7 @@ public class LectureServiceImpl implements LectureService {
      * 강의 상세 조회
      */
     @Override
-    public LectureDetailResponse getLecture(String lectureId) {
+    public LectureDetailResponse getLecture(String lectureId,String currentUid) {
         Lecture lecture = lectureRepository.findById(lectureId)
                 .orElseThrow(() -> new IllegalArgumentException("강의를 찾을 수 없습니다."));
 
@@ -139,12 +146,17 @@ public class LectureServiceImpl implements LectureService {
                 lecture.getThumbnailUrl(),
                 lecture.getLecturerUid(),
                 lecture.getLecturerName(),
+                lecture.getDifficulty(),
+                lecture.getLearningObjectives(),
                 lecture.isAdminApproved(),
                 lecture.isPublished(),
                 lecture.getTags(),
+                lecture.getVideoCount(),
+                lecture.getTotalDurationMinutes(),
                 lecture.getRating(),
                 lecture.getReviewCount(),
-                lecture.getCreatedAt().toDate().toInstant()
+                lecture.getCreatedAt().toDate().toInstant().toString(),
+                List.of()
         );
     }
 
@@ -164,16 +176,7 @@ public class LectureServiceImpl implements LectureService {
     }
 
     private LectureListItemResponse toListItem(Lecture lecture) {
-        return new LectureListItemResponse(
-                lecture.getLectureId(),
-                lecture.getTitle(),
-                lecture.getThumbnailUrl(),
-                lecture.getLecturerUid(),
-                lecture.getLecturerName(),
-                lecture.getRating(),
-                lecture.getPrice(),
-                lecture.getTags()
-        );
+        return LectureListItemResponse.from(lecture);
     }
     
     @Override
@@ -188,7 +191,7 @@ public class LectureServiceImpl implements LectureService {
     */
     @Override
     public void uploadVideo(String lectureId, MultipartFile video, MultipartFile thumbnail, String title, 
-                String description, boolean preview, String currentUid) {
+                String description, boolean preview, Integer durationSeconds, String currentUid) {
         // 강의 테마 존재 확인
         Lecture lecture = lectureRepository.findById(lectureId)
                 .orElseThrow(() -> new IllegalArgumentException("강의 테마 없음"));
@@ -263,8 +266,13 @@ public class LectureServiceImpl implements LectureService {
         lectureVideo.setDescription(description);
         lectureVideo.setOrder(order);
         lectureVideo.setVideoUrl(videoUrl);
-        lectureVideo.setThumbnailUrl(thumbnailUrl);
+        // durationSeconds는 "초 단위"로 받는다. (클라이언트가 모르면 null로 보낼 수 있음)
+        lectureVideo.setDuration(
+                durationSeconds != null ? Math.max(durationSeconds, 0) : 0
+        );
+        
         lectureVideo.setPreview(preview);
+        lectureVideo.setThumbnailUrl(thumbnailUrl);
         lectureVideo.setCreatedAt(Timestamp.now());
         lectureVideo.setDeleted(false);
 
@@ -272,6 +280,12 @@ public class LectureServiceImpl implements LectureService {
 
         // videoCount +1
         lectureRepository.incrementVideoCount(lectureId);
+
+        // totalDurationMinutes 집계(초 -> 분, 올림)
+        if (durationSeconds != null) {
+            int minutes = (durationSeconds + 59) / 60;
+            lectureRepository.incrementTotalDurationMinutes(lectureId, minutes);
+        }
     }
 
     /*
@@ -288,9 +302,9 @@ public class LectureServiceImpl implements LectureService {
         List<LectureVideo> videos =
                 lectureRepository.findVideosByLectureId(lectureId);
 
-        // 3. 구매 여부 판단 (지금은 간단히)
-        boolean purchased = lecture.getLecturerUid().equals(currentUid)
-                || lecture.getPrice() == 0;
+        // 3. 구매 여부 판단
+        LectureAccessResult access = lectureAccessService.check(currentUid, lecture);
+        boolean purchased = access.accessible();
 
         return videos.stream()
                 .filter(v -> !v.isDeleted()) // 삭제된 영상 숨김
@@ -299,12 +313,13 @@ public class LectureServiceImpl implements LectureService {
                         v.getTitle(),
                         v.getDescription(),
                         v.getOrder(),
+                        v.getDuration(),
                         v.getVideoUrl(),
                         v.getThumbnailUrl(),
                         v.isPreview(),
                         purchased || v.isPreview(), // 미리보기는 구매 없이 가능
                         v.isDeleted(),
-                        v.getCreatedAt().toDate().toInstant()
+                        v.getCreatedAt().toDate().toInstant().toString()
                 ))
                 .toList();
     }
@@ -419,5 +434,8 @@ public class LectureServiceImpl implements LectureService {
 
         lectureRepository.softDeleteVideo(lectureId, videoId);
         lectureRepository.decrementVideoCount(lectureId);
+
+        int minutes = (lectureVideo.getDuration() + 59) / 60;
+        lectureRepository.incrementTotalDurationMinutes(lectureId, -minutes);
     }
 }

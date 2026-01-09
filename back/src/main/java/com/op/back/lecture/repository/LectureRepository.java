@@ -24,4 +24,7 @@ public interface LectureRepository {
 
     void softDeleteVideo(String lectureId, String videoId);
     int getNextVideoOrder(String lectureId);
+
+    //강의(테마) 카드에 노출할 총 시간(분) 집계
+    void incrementTotalDurationMinutes(String lectureId, int minutesDelta);
 }

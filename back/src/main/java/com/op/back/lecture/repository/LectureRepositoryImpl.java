@@ -166,6 +166,19 @@ public class LectureRepositoryImpl implements LectureRepository {
     }
 
     @Override
+    public void incrementTotalDurationMinutes(String lectureId, int minutesDelta) {
+        if (minutesDelta == 0) return;
+        try {
+            firestore.collection("lectures")
+                    .document(lectureId)
+                    .update("totalDurationMinutes", FieldValue.increment(minutesDelta))
+                    .get();
+        } catch (Exception e) {
+            throw new RuntimeException("totalDurationMinutes 증감 실패", e);
+        }
+    }
+
+    @Override
     public Optional<LectureVideo> findVideoById(String lectureId, String videoId) {
         try {
             var doc = firestore.collection("lectures")

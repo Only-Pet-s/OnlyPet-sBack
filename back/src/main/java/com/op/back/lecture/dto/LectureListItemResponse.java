@@ -11,20 +11,30 @@ public record LectureListItemResponse(
         String thumbnailUrl,
         String lecturerUid,
         String lecturerName,
+        int videoCount,
+        int totalDurationMinutes,
         double rating,
         int price,
-        List<String> tags
+        List<String> tags,
+        boolean inMyLecture
 ) {
     public static LectureListItemResponse from(Lecture lecture) {
+        return from(lecture, false);
+    }
+
+    public static LectureListItemResponse from(Lecture lecture, boolean inMyLecture) {
         return new LectureListItemResponse(
                 lecture.getLectureId(),
                 lecture.getTitle(),
                 lecture.getThumbnailUrl(),
                 lecture.getLecturerUid(),
                 lecture.getLecturerName(),
+                lecture.getVideoCount(),
+                lecture.getTotalDurationMinutes(),
                 lecture.getRating(),
                 lecture.getPrice(),
-                lecture.getTags()
+                lecture.getTags(),
+                inMyLecture
         );
     }
 }
