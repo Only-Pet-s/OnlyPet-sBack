@@ -85,6 +85,31 @@ public class AuthController {
         }
     }
 
+    //현재 비밀번호 타당성 검사
+    @PostMapping("/pwValidation")
+    public ResponseEntity<ResponseDTO<?>> pwValidation(
+            @RequestBody Map<String, String> data,
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        try{
+            String token = authHeader.substring(7);
+            String email = jwtUtil.getEmail(token);
+            String pw = data.get("password");
+
+            if(!authService.pwValidation(email,pw)){
+                return ResponseEntity.ok(
+                        new ResponseDTO<>(true, "현재 비밀번호와 일치하지 않음", null)
+                );
+            }
+            return ResponseEntity.ok(
+                    new ResponseDTO<>(true, "현재 비밀번호와 일치함", null)
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    new ResponseDTO<>(false, "현재 비밀번호와 일치하지 않음", null)
+            );
+        }
+    }
     // 비밀번호 변경하기
     @PostMapping("/changePw")
     public ResponseEntity<ResponseDTO<?>> changePw(
@@ -126,89 +151,6 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest()
                     .body(new ResponseDTO<>(false, "회원 탈퇴 실패: " + e.getMessage(), null));
-        }
-    }
-
-    @PatchMapping("/updateInfo")
-    public ResponseEntity<ResponseDTO<?>> update(@RequestBody Map<String, Object> data, @RequestHeader("Authorization") String header){
-        try{
-            String token = header.substring(7);
-            String uid = jwtUtil.getUid(token);
-            authService.updateUserInfo(uid, data);
-
-            return ResponseEntity.ok(new ResponseDTO<>(true, "회원 정보 수정 성공", null));
-        }catch(Exception e){
-            return ResponseEntity.badRequest().body(new  ResponseDTO<>(false, "회원 정보 수정 실패: " + e.getMessage(), null));
-        }
-    }
-
-    @PatchMapping(value="/updatePImg", consumes = "multipart/form-data")
-    public ResponseEntity<ResponseDTO<?>> updateProfileImage(
-            @RequestPart("file") MultipartFile file,
-            @RequestHeader("Authorization") String header
-    ){
-        try{
-            String token = header.substring(7);
-            String uid = jwtUtil.getUid(token);
-
-            String imageUrl = authService.updateProfileImage(uid, file);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("profileImageUrl", imageUrl);
-
-            return ResponseEntity.ok(
-                    new ResponseDTO<>(true, "프로필 사진 변경", result)
-            );
-        }catch(Exception e){
-            return ResponseEntity.badRequest().body(
-                    new ResponseDTO<>(false, "프로필 사진 변경 실패" + e.getMessage(), null)
-            );
-        }
-    }
-
-    // 계정(판매자/강의자/펫시터 구분)
-    @PostMapping(value = "/updateRole", consumes = "multipart/form-data")
-    public ResponseEntity<ResponseDTO<?>> updateRole(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestPart(required = false) String seller,
-            @RequestPart(required = false) String instructor,
-            @RequestPart(required = false) String petsitter,
-            @RequestPart(required = false) MultipartFile businessFile,
-            @RequestPart(required = false) MultipartFile certificateFile
-    ) {
-        try {
-            String token = authHeader.substring(7);
-            String uid = jwtUtil.getUid(token);
-
-            Boolean isSeller = seller != null ? Boolean.parseBoolean(seller) : null;
-            Boolean isInstructor = instructor != null ? Boolean.parseBoolean(instructor) : null;
-            Boolean isPetsitter = petsitter != null ? Boolean.parseBoolean(petsitter) : null;
-
-            authService.updateRole(uid, isSeller, isInstructor, isPetsitter, businessFile, certificateFile);
-
-            return ResponseEntity.ok(new ResponseDTO<>(true, "계정 수정 성공", null));
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseDTO<>(false, "계정 수정 실패: " + e.getMessage(), null));
-        }
-    }
-
-    // 캡션 수정 하기
-    @PatchMapping("/updateCaption")
-    public ResponseEntity<ResponseDTO<?>> updateCaption(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody Map<String, String> data
-    ){
-        try{
-            String uid = jwtUtil.getUid(authHeader.substring(7));
-
-            authService.updateCaption(uid, data);
-
-            return ResponseEntity.ok(new ResponseDTO<>(true, "캡션 수정 성공", null));
-        }catch(Exception e){
-            return ResponseEntity.badRequest()
-                    .body(new ResponseDTO<>(false, "캡션 수정 실패: " + e.getMessage(), null));
         }
     }
 }

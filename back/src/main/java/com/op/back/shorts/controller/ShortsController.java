@@ -2,6 +2,7 @@ package com.op.back.shorts.controller;
 
 import com.op.back.shorts.dto.ShortsCreateRequest;
 import com.op.back.shorts.dto.ShortsResponse;
+import com.op.back.shorts.dto.ShortsUpdateRequest;
 import com.op.back.shorts.service.ShortsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -31,10 +32,11 @@ public class ShortsController {
         @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
         public ResponseEntity<String> create(
                         @RequestPart("data") ShortsCreateRequest request,
-                        @RequestPart("video") MultipartFile video) throws Exception {
+                        @RequestPart("video") MultipartFile video,
+                        @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail) throws Exception {
 
                 return ResponseEntity.ok(
-                                shortsService.createShorts(request, video, currentUid()));
+                                shortsService.createShorts(request, video, thumbnail, currentUid()));
         }
 
         // 쇼츠 단일 조회
@@ -89,13 +91,33 @@ public class ShortsController {
                 return ResponseEntity.ok().build();
         }
 
-        // 해시태그 검색
+        //태그 검색
         @GetMapping("/search")
-        public ResponseEntity<List<ShortsResponse>> search(
-                        @RequestParam String tag,
-                        @RequestParam(defaultValue = "20") int limit) throws Exception {
+        public List<ShortsResponse> search(
+                        @RequestParam String q,
+                        @RequestParam(defaultValue = "10") int size
+        ) throws Exception {
+                return shortsService.search(q, size, currentUid());
+        }
 
+        //업데이트
+        @PatchMapping(value = "/{shortsId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        public ResponseEntity<ShortsResponse> updateShorts(
+                @PathVariable String shortsId,
+                @RequestPart("data") ShortsUpdateRequest request,
+                @RequestPart(value = "video", required = false) MultipartFile video,
+                @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+                ) throws Exception {
                 return ResponseEntity.ok(
-                                shortsService.searchByHashtag(tag, limit, currentUid()));
+                        shortsService.updateShorts(shortsId, request, video, thumbnail, currentUid())
+                );
+        }
+
+        //쇼츠 삭제
+        @DeleteMapping("/{shortsId}")
+        public ResponseEntity<Void> deleteShorts(@PathVariable String shortsId)
+                throws Exception {
+        shortsService.deleteShorts(shortsId, currentUid());
+        return ResponseEntity.noContent().build();
         }
 }

@@ -21,5 +21,7 @@ public class Shorts {
     private Long commentCount;
     private Long viewCount;
 
+    private Boolean commentAvailable;
+
     private Timestamp createdAt;     // Firestore Timestamp
 }

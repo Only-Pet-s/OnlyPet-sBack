@@ -13,8 +13,11 @@ public class Post {
     private String id;
     private String uid;
     private String content;
+    // (호환) 첫 번째 미디어
     private String mediaUrl;
     private String mediaType;
+    private String thumbnailUrl;
+    private Long mediaCount;
     private List<String> hashtags;
     private Boolean commentAvailable;
     private long likeCount;

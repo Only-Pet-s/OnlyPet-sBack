@@ -1,56 +1,52 @@
+
 package com.op.back.lecture.search;
-
-import com.op.back.lecture.service.LectureSearchService;
-
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Service
+import org.springframework.stereotype.Repository;
+
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import lombok.RequiredArgsConstructor;
+
+@Repository
 @RequiredArgsConstructor
-public class ElasticLectureSearchService implements LectureSearchService {
+public class LectureSearchRepository {
 
-    private final ElasticsearchClient elasticsearchClient;
+    private static final String INDEX = "lecture-index";
+    private final ElasticsearchClient client;
 
-    @Override
     public List<String> searchLectureIds(
             String keyword, List<String> tags, String category, int limit, int offset) {
 
         try {
             var response =
-                elasticsearchClient.search(s -> s
-                    .index("lecture-index")
+                client.search(s -> s
+                    .index(INDEX)
                     .from(offset)
                     .size(limit)
                     .query(q -> q
                         .bool(b -> {
-                            // 기본 조건: 승인 + 공개
                             b.filter(f -> f.term(t ->
                                 t.field("adminApproved").value(true)));
                             b.filter(f -> f.term(t ->
                                 t.field("published").value(true)));
 
-                            // 키워드 (title OR description)
                             if (keyword != null && !keyword.isBlank()) {
                                 b.must(m -> m.multiMatch(mm ->
                                     mm.fields("title", "description")
                                       .query(keyword)));
                             }
 
-                            // 태그
                             if (tags != null && !tags.isEmpty()) {
                                 b.filter(f -> f.terms(t ->
                                     t.field("tags")
                                      .terms(v -> v.value(
-                                         tags.stream().map(co.elastic.clients.elasticsearch._types.FieldValue::of).toList()
-                                     ))
-                                ));
+                                         tags.stream()
+                                             .map(co.elastic.clients.elasticsearch._types.FieldValue::of)
+                                             .toList()
+                                     ))));
                             }
 
-                            // 카테고리
                             if (category != null && !category.isBlank()) {
                                 b.filter(f -> f.term(t ->
                                     t.field("category").value(category)));

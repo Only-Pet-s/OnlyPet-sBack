@@ -18,8 +18,13 @@ public class PostResponse {
 
     // 본문
     private String content;
+
+    //첫 미디어 정보
     private String mediaUrl;
     private String mediaType;
+    
+    //게시글 미디어(max : 5)
+    private List<PostMediaResponse> media;
 
     // 옵션
     private boolean commentAvailable;
