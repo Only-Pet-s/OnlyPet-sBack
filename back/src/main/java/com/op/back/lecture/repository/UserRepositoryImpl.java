@@ -28,4 +28,11 @@ public class UserRepositoryImpl implements UserRepository {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public void updateInstructorRole(String uid, boolean instructor) {
+        firestore.collection("users")
+                .document(uid)
+                .update("instructor", instructor);
+    }
 }
