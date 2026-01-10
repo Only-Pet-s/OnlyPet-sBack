@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 
 @Configuration
@@ -23,6 +22,7 @@ public class FirebaseConfig {
 
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                .setStorageBucket("onlypets-7a50a.firebasestorage.app")
                 .build();
 
         System.out.println(" FirebaseApp 초기화 완료");
@@ -38,4 +38,8 @@ public class FirebaseConfig {
     public FirebaseAuth firebaseAuth(FirebaseApp firebaseApp) {
         return FirebaseAuth.getInstance();
     }
+//    @Bean
+//    public StandardServletMultipartResolver multipartResolver() {
+//        return new StandardServletMultipartResolver();
+//    }
 }
