@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.google.cloud.Timestamp;
 import com.op.back.lecture.dto.InstructorCreateRequest;
@@ -13,6 +14,7 @@ import com.op.back.lecture.model.Instructor;
 import com.op.back.lecture.model.Lecture;
 import com.op.back.lecture.repository.InstructorRepository;
 import com.op.back.lecture.repository.LectureRepository;
+import com.op.back.lecture.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class InstructorServiceImpl implements InstructorService{
     private final InstructorRepository instructorRepository;
     private final LectureRepository lectureRepository;
+    private final UserRepository userRepository;
 
     @Override
     public void registerInstructor(String instructorUid, InstructorCreateRequest req) {
@@ -43,6 +46,8 @@ public class InstructorServiceImpl implements InstructorService{
         instructor.setUpdatedAt(Timestamp.now());
 
         instructorRepository.create(instructor);
+
+        userRepository.updateInstructorRole(instructorUid, true);
     }
 
     @Override

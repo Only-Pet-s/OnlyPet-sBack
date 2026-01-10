@@ -7,4 +7,5 @@ import com.op.back.auth.model.User;
 public interface UserRepository {
 
     Optional<User> findByUid(String uid);
+    void updateInstructorRole(String uid, boolean instructor);
 }
