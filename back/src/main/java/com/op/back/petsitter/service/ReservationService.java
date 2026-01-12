@@ -380,6 +380,7 @@ public class ReservationService {
                     user.getString("profileImageUrl"),
                     user.getString("phone"),
                     user.getString("address"),
+                    doc.getLong("price"),
                     doc.getString("careType"),
                     doc.getString("date"),
                     doc.getString("startTime"),
