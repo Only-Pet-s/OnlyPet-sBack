@@ -46,6 +46,19 @@ public class ReservationService {
                 LocalTime reqStart = LocalTime.parse(req.getStartTime());
                 LocalTime reqEnd = LocalTime.parse(req.getEndTime());
 
+                // 예약 시간(시간 단위)
+                long hours = ChronoUnit.HOURS.between(reqStart, reqEnd);
+                if (hours <= 0) {
+                    throw new ReservationException("예약 시간은 최소 1시간 이상이어야 합니다.");
+                }
+
+                DocumentSnapshot petsitterInfo = firestore.collection("petsitters").document(req.getPetsitterId()).get().get();
+
+                Long price = petsitterInfo.getLong("price");
+
+                // 시간당 가격 x 예약 시간
+                Long totalPrice = price * hours;
+
                 DocumentSnapshot petsitter =
                         firestore.collection("petsitters")
                                 .document(req.getPetsitterId())
@@ -104,7 +117,7 @@ public class ReservationService {
                 }
                 data.put("reservationStatus", "HOLD");
                 data.put("paymentStatus", "PENDING");
-                data.put("price", req.getPrice());
+                data.put("price", totalPrice);
                 data.put("createdAt", Timestamp.now());
                 data.put(
                         "paymentExpireAt",
@@ -117,7 +130,7 @@ public class ReservationService {
                 Map<String, Object> res = new HashMap<>();
                 res.put("reservationId", ref.getId());
                 res.put("buyerUid", uid);
-                res.put("price", String.valueOf(req.getPrice()));
+                res.put("price", String.valueOf(totalPrice));
 
                 return res;
             }).get();

@@ -27,7 +27,7 @@ public class ReservationRequestDTO {
 
     private String requestNote;
 
-    private Integer price;
+//    private Integer price;
 //    private String uid;
 //    private String petsitterId;
 //
