@@ -120,11 +120,12 @@ public class PetsitterReviewService {
                         ((currentRating * reviewCount) + req.getRating())
                                 / (reviewCount + 1);
 
-                // 5. 리뷰 저장
-                DocumentReference reviewRef =
-                        petsitterRef.collection("reviews").document(reviewId);
+                // 추후 유저별 작성했던 리뷰 조회를 위해 users/psReviews에 저장
+                DocumentReference userRef = firestore.collection("users").document(uid).collection("psReviews").document(reviewId);
+                DocumentSnapshot user = firestore.collection("users").document(uid).get().get();
+                String nickname = user.getString("nickname");
 
-                tx.set(reviewRef, Map.of(
+                tx.set(userRef, Map.of(
                         "reviewId", reviewId,
                         "reservationId", req.getReservationId(),
                         "userUid", uid,
@@ -133,10 +134,12 @@ public class PetsitterReviewService {
                         "createdAt", Timestamp.now()
                 ));
 
-                // 추후 유저별 작성했던 리뷰 조회를 위해 users/psReviews 에도 저장
-                DocumentReference userRef = firestore.collection("users").document(uid).collection("psReviews").document(reviewId);
+                // 5. 리뷰 저장
+                DocumentReference reviewRef =
+                        petsitterRef.collection("reviews").document(reviewId);
 
-                tx.set(userRef, Map.of(
+                tx.set(reviewRef, Map.of(
+                        "nickname", nickname,
                         "reviewId", reviewId,
                         "reservationId", req.getReservationId(),
                         "userUid", uid,
@@ -182,6 +185,7 @@ public class PetsitterReviewService {
             list.add(new PetsitterReviewResponseDTO(
                     doc.getId(),
                     doc.getString("userUid"),
+                    doc.getString("nickname"),
                     doc.getLong("rating").intValue(),
                     doc.getString("content"),
                     doc.getTimestamp("createdAt")
@@ -203,13 +207,26 @@ public class PetsitterReviewService {
         } catch (Exception e) {
             throw new ReviewException("리뷰 조회에 실패했습니다.");
         }
-
+        DocumentSnapshot userSnap=null;
+        try {
+            userSnap =
+                    firestore.collection("users")
+                            .document(uid)
+                            .get()
+                            .get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+        String nickname = userSnap.getString("nickname");
         List<PetsitterReviewResponseDTO> list = new ArrayList<>();
 
         for (DocumentSnapshot doc : snapshots.getDocuments()) {
             list.add(new PetsitterReviewResponseDTO(
                     doc.getId(),
                     doc.getString("userUid"),
+                    nickname,
                     doc.getLong("rating").intValue(),
                     doc.getString("content"),
                     doc.getTimestamp("createdAt")

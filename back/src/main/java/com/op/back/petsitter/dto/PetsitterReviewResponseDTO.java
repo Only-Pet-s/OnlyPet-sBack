@@ -9,6 +9,7 @@ import lombok.Getter;
 public class PetsitterReviewResponseDTO {
     private String reviewId;
     private String userUid;
+    private String nickname;
     private int rating;
     private String content;
     private Timestamp createdAt;
