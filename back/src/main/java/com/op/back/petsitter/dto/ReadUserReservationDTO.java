@@ -14,4 +14,9 @@ public class ReadUserReservationDTO {
     private String startTime;
     private String endTime;
     private String reservationStatus;
+    private String address;
+    private String phone;
+    private Long price;
+    private String petName;
+    private String requestNote;
 }

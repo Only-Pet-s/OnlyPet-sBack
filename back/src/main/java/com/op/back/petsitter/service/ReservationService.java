@@ -206,7 +206,7 @@ public class ReservationService {
             reservations = firestore.collection("reservations")
                     .whereEqualTo("petsitterId", petsitterId)
                     .whereEqualTo("date", date)
-                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "ACCEPTED"))
+                    .whereIn("reservationStatus", List.of("HOLD", "RESERVED", "ACCEPTED", "COMPLETED"))
                     .get().get();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -343,7 +343,12 @@ public class ReservationService {
                     doc.getString("date"),
                     doc.getString("startTime"),
                     doc.getString("endTime"),
-                    doc.getString("reservationStatus")
+                    doc.getString("reservationStatus"),
+                    petsitter.getString("address"),
+                    petsitter.getString("phone"),
+                    doc.getLong("price"),
+                    doc.getString("petName"),
+                    doc.getString("requestNote")
             ));
         }
 
