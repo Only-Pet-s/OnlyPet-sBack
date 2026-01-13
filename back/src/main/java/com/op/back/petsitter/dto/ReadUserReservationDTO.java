@@ -19,4 +19,6 @@ public class ReadUserReservationDTO {
     private Long price;
     private String petName;
     private String requestNote;
+    private Double mannerTemp;
+    private Double rating;
 }
