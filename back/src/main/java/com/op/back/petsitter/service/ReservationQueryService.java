@@ -258,14 +258,17 @@ public class ReservationQueryService {
                 refunded++; // 환불 건수
             }
 
-            if ("ACCEPTED".equals(reservationStatus) && "COMPLETED".equals(paymentStatus)) { // 예약 상태 + 결제 완료 상태 만족 시
-                LocalDate date = LocalDate.parse(doc.getString("date"));
-                LocalTime endTime = LocalTime.parse(doc.getString("endTime"));
-
-                if (LocalDateTime.of(date, endTime).isBefore(now)) { // 해당 예약 날짜가 지났으면 완료 횟수 추가
-                    completed++;
-                }
+            if ("COMPLETED".equals(reservationStatus)) {
+                completed++;
             }
+//            if ("ACCEPTED".equals(reservationStatus) && "COMPLETED".equals(paymentStatus)) { // 예약 상태 + 결제 완료 상태 만족 시
+//                LocalDate date = LocalDate.parse(doc.getString("date"));
+//                LocalTime endTime = LocalTime.parse(doc.getString("endTime"));
+//
+//                if (LocalDateTime.of(date, endTime).isBefore(now)) { // 해당 예약 날짜가 지났으면 완료 횟수 추가
+//                    completed++;
+//                }
+//            }
         }
 
         return new PetsitterReservationCountDTO(
