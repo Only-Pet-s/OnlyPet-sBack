@@ -3,6 +3,7 @@ package com.op.back.payment.service;
 import java.util.List;
 import java.util.UUID;
 
+import com.op.back.fcm.service.FcmService;
 import org.springframework.stereotype.Service;
 
 import com.google.cloud.Timestamp;
@@ -22,6 +23,7 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     private final PurchaseRepository purchaseRepository;
     private final LectureRepository lectureRepository;
+    private final FcmService fcmService;
 
     //강의 구매하기
     @Override
@@ -29,11 +31,17 @@ public class PurchaseServiceImpl implements PurchaseService {
         var lecture = lectureRepository.findById(request.lectureId())
                 .orElseThrow(() -> new IllegalArgumentException("강의를 찾을 수 없습니다."));
 
+        String instructorUid = lecture.getLecturerUid();
+        String purchaseId = UUID.randomUUID().toString(); // 구매 id 변수로 담아서 관리, 해당 구매 id를 알림에 활용
+        int price = lecture.getPrice();
+
         Purchase p = new Purchase();
-        p.setPurchaseId(UUID.randomUUID().toString());
+        //p.setPurchaseId(UUID.randomUUID().toString()); // 이전 코드
+        p.setPurchaseId(purchaseId);
         p.setType(PurchaseType.LECTURE);
         p.setLectureId(request.lectureId());
-        p.setPrice(lecture.getPrice());
+        //p.setPrice(lecture.getPrice()); // 이전 코드
+        p.setPrice(price);
         p.setCurrency("KRW");
         p.setPaymentMethod(request.paymentMethod());
         p.setPaymentKey("MOCK-" + p.getPurchaseId());
@@ -41,6 +49,8 @@ public class PurchaseServiceImpl implements PurchaseService {
         p.setPurchasedAt(Timestamp.now());
 
         purchaseRepository.save(uid, p);
+        fcmService.sendPurchaseLecture(uid, instructorUid, price, purchaseId);
+
         return toResponse(p);
     }
 

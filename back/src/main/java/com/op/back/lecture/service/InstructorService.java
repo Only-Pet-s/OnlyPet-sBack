@@ -16,4 +16,7 @@ public interface InstructorService {
     
     //강사 평점/리뷰 수를 '강의 리뷰' 총합으로 재계산해서 저장
     void syncRatingFromLectures(String instructorUid);
+
+    // 해당 lecture의 강사 uid 조회
+    String getInstructorUid(String lectureId);
 }

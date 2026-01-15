@@ -259,6 +259,36 @@ public class FcmService {
         );
     }
 
+    // 강의 구매 알림
+    public void sendPurchaseLecture(
+            String buyerUid,
+            String instructorUid,
+            int price,
+            String purchaseId
+    ){
+        String buyerName = getNickname(buyerUid, "사용자");
+        send(
+                buyerUid,
+                "강의 구매 알림",
+                price + "원이 결제되었습니다.",
+                Map.of(
+                        "type", FcmType.LECTURE_PURCHASED.name(),
+                        "purchaseId", purchaseId
+                )
+        );
+
+        // 예약 도착
+        send(
+                instructorUid,
+                buyerName + "님이 강의를 구매하셨습니다.",
+                price + "원이 입금되었습니다.",
+                Map.of(
+                        "type", FcmType.LECTURE_PURCHASED.name(),
+                        "purchaseId", purchaseId
+                )
+        );
+    }
+
     // fcm 푸시 알림 공통 메소드
     private void send(
             String targetUid,
