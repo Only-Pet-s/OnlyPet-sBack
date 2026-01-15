@@ -3,7 +3,10 @@ package com.op.back.lecture.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
+import com.google.cloud.firestore.DocumentSnapshot;
+import com.google.cloud.firestore.Firestore;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,6 +27,7 @@ public class InstructorServiceImpl implements InstructorService{
     private final InstructorRepository instructorRepository;
     private final LectureRepository lectureRepository;
     private final UserRepository userRepository;
+    private final Firestore firestore;
 
     @Override
     public void registerInstructor(String instructorUid, InstructorCreateRequest req) {
@@ -89,5 +93,19 @@ public class InstructorServiceImpl implements InstructorService{
         double avg = totalReviews == 0 ? 0.0 : (sum / totalReviews);
         instructorRepository.updateRatingStats(instructorUid, avg, totalReviews);
     }
-    
+
+    // 해당 강의의 강사 id 조회
+    @Override
+    public String getInstructorUid(String lectureId){
+        DocumentSnapshot snap = null;
+        try {
+            snap = firestore.collection("lectures").document(lectureId).get().get();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        return snap.getString("lecturerUid");
+    }
 }
