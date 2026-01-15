@@ -8,7 +8,7 @@ services:
       - "8080:8080"
     depends_on:
       - elasticsearch
-      - redis
+#      - redis
     environment:
       #Spring
       SPRING_PROFILES_ACTIVE: prod
@@ -41,14 +41,14 @@ services:
     networks:
       - onlypets-net
 
-  redis:
-    image: redis:7-alpine
-    container_name: onlypets-redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-    networks:
-      - onlypets-net
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: onlypets-redis
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+  #   networks:
+  #     - onlypets-net
 
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.13.4
