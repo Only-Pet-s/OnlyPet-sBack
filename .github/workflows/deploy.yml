@@ -37,14 +37,3 @@ jobs:
         tags: |
           ghcr.io/only-pet-s/onlypets-back:latest
           ghcr.io/only-pet-s/onlypets-back:${{ github.sha }}
-
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          cd /opt/onlypets
-          docker compose pull
-          docker compose up -d --remove-orphans
