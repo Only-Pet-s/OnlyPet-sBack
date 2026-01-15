@@ -9,4 +9,5 @@ public class ReviewRequestDTO {
     private String reservationId;
     private int rating;
     private String content;
+    private String nickname;
 }

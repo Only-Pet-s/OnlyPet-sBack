@@ -1,29 +1,60 @@
 version: "3.8"
 
 services:
+  #nginx설정
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: onlypets-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - back
+    restart: unless-stopped
+    networks:
+      - onlypets-net
+
   back:
-    build: .
+    image: ghcr.io/<GITHUB_ID>/onlypets-back:latest
     container_name: onlypets-back
     ports:
       - "8080:8080"
-    depends_on:
-      - elasticsearch
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      SPRING_CONFIG_ADDITIONAL_LOCATION: "file:/config/"
+    volumes:
+      - /opt/onlypets/config/application.properties:/config/application.properties:ro
+      - /opt/onlypets/secrets/firebase_key.json:/secrets/firebase_key.json:ro
+    restart: unless-stopped
+    networks:
+      - onlypets-net
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-    container_name: es
+    container_name: onlypets-es
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-    ports:
-      - "9200:9200"
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+    restart: unless-stopped
+    networks:
+      - onlypets-net
 
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.13.4
-    container_name: kibana
-    depends_on:
-      - elasticsearch
-    ports:
-      - "5601:5601"
+  # kibana:
+  #   image: docker.elastic.co/kibana/kibana:8.13.4
+  #   container_name: onlypets-kibana
+  #   depends_on:
+  #     - elasticsearch
+  #   environment:
+  #     - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+  #   ports:
+  #     - "5601:5601"
+  #   restart: unless-stopped
+  #   networks:
+  #     - onlypets-net
+
+networks:
+  onlypets-net:
+    driver: bridge

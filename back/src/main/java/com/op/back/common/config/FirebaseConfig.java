@@ -7,26 +7,31 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.cloud.FirestoreClient;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 
 @Configuration
 public class FirebaseConfig {
 
+    @Value("${firebase.credentials.path}")
+    private String firebaseKeyPath;
+
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        ClassPathResource resource = new ClassPathResource("firebase/firebase_key.json");
-
         FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                .setCredentials(GoogleCredentials.fromStream(new FileInputStream(firebaseKeyPath)))
                 .setStorageBucket("onlypets-7a50a.firebasestorage.app")
                 .build();
 
-        System.out.println(" FirebaseApp 초기화 완료");
-        return FirebaseApp.initializeApp(options);
+        if (FirebaseApp.getApps().isEmpty()) {
+            return FirebaseApp.initializeApp(options);
+        }
+        return FirebaseApp.getInstance();
     }
 
     @Bean

@@ -12,6 +12,7 @@ public class ReadPetsitterReservedDTO {
     private String userProfileImage;
     private String phone;
     private String address;
+    private Long price;
     private String careType;
     private String date;
     private String startTime;

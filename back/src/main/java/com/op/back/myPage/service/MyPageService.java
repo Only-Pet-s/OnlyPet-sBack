@@ -2,6 +2,7 @@ package com.op.back.myPage.service;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
+import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.Bucket;
 import com.google.firebase.cloud.StorageClient;
 import com.op.back.myPage.dto.MyPageDTO;
@@ -208,6 +209,28 @@ public class MyPageService {
         // 3) 새 파일 업로드
         String newUrl = uploadToStorage(uid, file, "profiles");
 
+        if (Boolean.TRUE.equals(snapshot.getBoolean("petsitter"))) {
+            DocumentReference petRef =
+                    firestore.collection("petsitters").document(uid);
+
+            DocumentSnapshot petSnap = petRef.get().get();
+
+            if (petSnap.exists()) {
+                petRef.update("profileImageUrl", newUrl).get();
+            }
+        }
+
+        if (Boolean.TRUE.equals(snapshot.getBoolean("petsitter"))) {
+            DocumentReference petRef =
+                    firestore.collection("petsitters").document(uid);
+
+            DocumentSnapshot petSnap = petRef.get().get();
+
+            if (petSnap.exists()) {
+                petRef.update("profileImageUrl", newUrl).get();
+            }
+        }
+
         // 4) Firestore 업데이트
         ref.update("profileImageUrl", newUrl);
 
@@ -258,43 +281,39 @@ public class MyPageService {
     }
 
     // firebase storage에 기존에 존재하는 파일 삭제
+    // users 밑에 있는 url이 수정이 안되는듯함
     private void deleteFromStorage(String fileUrl) {
         try {
-            if (fileUrl == null || fileUrl.isEmpty()) return;
+            if (fileUrl == null || fileUrl.isBlank()) return;
 
-            // 1. 현재 버킷명 정확히 가져오기
             Bucket bucket = StorageClient.getInstance().bucket();
             String bucketName = bucket.getName();
 
-            // 2. URL 디코딩
             String decoded = URLDecoder.decode(fileUrl, StandardCharsets.UTF_8);
 
-            // 3. URL prefix, suffix 정의
-            String prefix = "https://firebasestorage.googleapis.com/v0/b/" + bucketName + "/o/";
+            String prefix =
+                    "https://firebasestorage.googleapis.com/v0/b/" + bucketName + "/o/";
 
             if (!decoded.startsWith(prefix)) {
-                System.out.println("URL prefix not matching: " + decoded);
-                return;
+                throw new RuntimeException("Storage URL 형식이 올바르지 않음");
             }
 
-            // 4. suffix 위치 찾기
             int endIndex = decoded.indexOf("?alt=");
             if (endIndex == -1) {
-                System.out.println("URL missing ?alt= parameter");
-                return;
+                throw new RuntimeException("Storage URL에 alt 파라미터 없음");
             }
 
-            // 5. object name 추출
             String objectName = decoded.substring(prefix.length(), endIndex);
 
-            // 6. 파일 삭제
-            boolean deleted = bucket.get(objectName).delete();
+            Blob blob = bucket.get(objectName);
+            if (blob == null) {
+                throw new RuntimeException("Storage 파일이 존재하지 않음: " + objectName);
+            }
 
-            //System.out.println("Deleted " + objectName + " = " + deleted);
+            blob.delete();
 
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Storage 파일 삭제 실패: " + e.getMessage());
+            throw new RuntimeException("Storage 파일 삭제 실패", e);
         }
     }
 
