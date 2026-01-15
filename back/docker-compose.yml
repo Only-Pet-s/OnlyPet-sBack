@@ -1,54 +1,46 @@
 version: "3.8"
 
 services:
+  #nginx설정
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: onlypets-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - back
+    restart: unless-stopped
+    networks:
+      - onlypets-net
+
   back:
-    build: .
+    image: ghcr.io/<GITHUB_ID>/onlypets-back:latest
     container_name: onlypets-back
     ports:
       - "8080:8080"
-    depends_on:
-      - elasticsearch
-#      - redis
     environment:
-      #Spring
       SPRING_PROFILES_ACTIVE: prod
       SPRING_CONFIG_ADDITIONAL_LOCATION: "file:/config/"
-
-      #Elasticsearch (ElasticsearchConfig에서 @Value)
-      ELASTICSEARCH_HOST: elasticsearch
-      ELASTICSEARCH_PORT: 9200
-
     volumes:
-      # Key & properties 관리
       - /opt/onlypets/config/application.properties:/config/application.properties:ro
       - /opt/onlypets/secrets/firebase_key.json:/secrets/firebase_key.json:ro
-
     restart: unless-stopped
     networks:
       - onlypets-net
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-    container_name: es
+    container_name: onlypets-es
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      # EC2 메모리에 맞게 조절
       - ES_JAVA_OPTS=-Xms256m -Xmx256m
-    ports:
-      - "9200:9200"
     restart: unless-stopped
     networks:
       - onlypets-net
-
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: onlypets-redis
-  #   ports:
-  #     - "6379:6379"
-  #   restart: unless-stopped
-  #   networks:
-  #     - onlypets-net
 
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.13.4
