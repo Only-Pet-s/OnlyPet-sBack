@@ -7,6 +7,7 @@ import com.op.back.post.search.PostSearchRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ public class PostService {
     private final PostReactionService postReactionService;
     private final PostSearchService postSearchService;
     private final PostSearchRepository postSearchRepository;
+    private final PostMyQueryService postMyQueryService;
 
     // 게시글 생성
     public PostResponse createPost(PostCreateRequest request, List<MultipartFile> mediaFiles, String uid)
@@ -87,6 +89,18 @@ public class PostService {
     public List<PostResponse> searchByHashtag(String tag, int limit, String currentUid)
             throws ExecutionException, InterruptedException {
         return postQueryService.searchByHashtag(tag, limit, currentUid);
+    }
+
+    //내가 누른 좋아요
+    public List<PostResponse> getLikedPosts(String uid)
+            throws Exception {
+        return postMyQueryService.getLikedPosts(uid);
+    }
+
+    //내가 누른 북마크
+    public List<PostResponse> getBookmarkedPosts(String uid)
+            throws Exception {
+        return postMyQueryService.getLikedPosts(uid);
     }
 
     /*
