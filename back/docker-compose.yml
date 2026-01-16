@@ -21,6 +21,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
+	#<GITHUB_ID>같은거 쓰지마세요
   back:
     image: ghcr.io/only-pet-s/onlypets-back:latest
     container_name: onlypets-back
