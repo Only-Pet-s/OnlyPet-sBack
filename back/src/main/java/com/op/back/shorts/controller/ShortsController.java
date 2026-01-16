@@ -117,7 +117,22 @@ public class ShortsController {
         @DeleteMapping("/{shortsId}")
         public ResponseEntity<Void> deleteShorts(@PathVariable String shortsId)
                 throws Exception {
-        shortsService.deleteShorts(shortsId, currentUid());
-        return ResponseEntity.noContent().build();
+                shortsService.deleteShorts(shortsId, currentUid());
+                return ResponseEntity.noContent().build();
         }
+
+        //내가 누른 좋아요 (쇼츠)
+        @GetMapping("/{uid}/likes")
+        public List<ShortsResponse> getLikedShorts(@PathVariable String uid)
+                throws Exception {
+                return shortsService.getLikedShorts(uid);
+        }
+
+        //내가 누른 북마크 (쇼츠)
+        @GetMapping("/{uid}/likes")
+        public List<ShortsResponse> getBookmarkedShorts(@PathVariable String uid)
+                throws Exception {
+                return shortsService.getBookmarkedShorts(uid);
+        }
+        
 }
