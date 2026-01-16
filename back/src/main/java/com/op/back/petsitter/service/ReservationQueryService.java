@@ -147,7 +147,7 @@ public class ReservationQueryService {
                     petsitter.getString("address"),
                     petsitter.getString("phone"),
                     doc.getLong("price"),
-                    doc.getString("petName"),
+                    readPets(doc),
                     doc.getString("requestNote"),
                     mannerTemp,
                     rating
@@ -207,8 +207,7 @@ public class ReservationQueryService {
                     doc.getString("date"),
                     doc.getString("startTime"),
                     doc.getString("endTime"),
-                    doc.getString("petType"),
-                    doc.getString("petName"),
+                    readPets(doc),
                     doc.getString("requestNote"),
                     doc.getString("reservationStatus")
             ));
@@ -400,5 +399,30 @@ public class ReservationQueryService {
     // db에 들어갈 일주일 단위
     private String toShortDay(DayOfWeek dayOfWeek) {
         return dayOfWeek.name().substring(0, 3); // MONDAY -> MON
+    }
+
+    private List<PetInfoDTO> readPets(DocumentSnapshot doc) {
+        Object rawPets = doc.get("pets");
+        if (rawPets instanceof List<?> list) {
+            List<PetInfoDTO> pets = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    Object nameObj = map.get("name");
+                    Object typeObj = map.get("type");
+                    pets.add(new PetInfoDTO(
+                            nameObj != null ? nameObj.toString() : null,
+                            typeObj != null ? typeObj.toString() : null
+                    ));
+                }
+            }
+            return pets;
+        }
+
+        String petName = doc.getString("petName");
+        String petType = doc.getString("petType");
+        if (petName != null || petType != null) {
+            return List.of(new PetInfoDTO(petName, petType));
+        }
+        return List.of();
     }
 }

@@ -3,6 +3,8 @@ package com.op.back.petsitter.dto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @AllArgsConstructor
 public class ReadPetsitterReservedDTO {
@@ -17,8 +19,7 @@ public class ReadPetsitterReservedDTO {
     private String date;
     private String startTime;
     private String endTime;
-    private String petType;
-    private String petName;
+    private List<PetInfoDTO> pets;
     private String requestNote;
     private String reservationStatus;
 }

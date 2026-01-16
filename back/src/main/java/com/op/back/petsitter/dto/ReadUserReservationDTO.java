@@ -3,6 +3,8 @@ package com.op.back.petsitter.dto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @AllArgsConstructor
 public class ReadUserReservationDTO {
@@ -17,7 +19,7 @@ public class ReadUserReservationDTO {
     private String address;
     private String phone;
     private Long price;
-    private String petName;
+    private List<PetInfoDTO> pets;
     private String requestNote;
     private Double mannerTemp;
     private Double rating;
