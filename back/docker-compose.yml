@@ -17,7 +17,7 @@ services:
       - onlypets-net
 
   back:
-    image: ghcr.io/<GITHUB_ID>/onlypets-back:latest
+    image: ghcr.io/only-pet-s/onlypets-back:latest
     container_name: onlypets-back
     ports:
       - "8080:8080"
