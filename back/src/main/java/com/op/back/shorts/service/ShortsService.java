@@ -24,6 +24,7 @@ public class ShortsService {
     private final ShortsQueryService shortsQueryService;
     private final ShortsReactionService shortsReactionService;
     private final ShortsSearchRepository shortsSearchRepository;
+    private final ShortsMyQueryService shortsMyQueryService;
 
     // 쇼츠 생성
     public String createShorts(ShortsCreateRequest request, MultipartFile videoFile,
@@ -84,6 +85,18 @@ public class ShortsService {
     // 쇼츠 삭제
     public void deleteShorts(String shortsId, String currentUid) throws Exception {
         shortsCommandService.deleteShorts(shortsId, currentUid);
+    }
+
+    //내가 누른 좋아요 쇼츠
+    public List<ShortsResponse> getLikedShorts(String uid) 
+            throws ExecutionException, InterruptedException{
+        return shortsMyQueryService.getLikedShorts(uid);
+    }
+
+    //내가 누른 북마크 쇼츠
+    public List<ShortsResponse> getBookmarkedShorts(String uid)
+            throws ExecutionException, InterruptedException{
+        return shortsMyQueryService.getBookmarkedShorts(uid);
     }
 
     /*
