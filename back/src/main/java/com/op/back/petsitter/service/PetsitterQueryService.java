@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 @Service
@@ -26,6 +27,7 @@ public class PetsitterQueryService {
     private final PetsitterMapperService petsitterMapperService;
 
     public List<PetsitterCardDTO> getPetsitters(
+            String uid,
             String Address,
             String petType,
             Integer minPrice,
@@ -42,6 +44,8 @@ public class PetsitterQueryService {
                 );
 
         return petsitters.stream()
+                // 본인 펫시터는 제외
+                .filter(p -> uid == null || !Objects.equals(uid, p.getPetsitterId()))
                 // 가격 필터
                 .filter(p -> filterPrice(p, minPrice, maxPrice))
                 // DTO 변환 + 거리 계산
