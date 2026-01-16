@@ -1,9 +1,9 @@
 package com.op.back.petsitter.dto;
 
-import com.google.cloud.Date;
-import com.google.cloud.Timestamp;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
@@ -22,8 +22,7 @@ public class ReservationRequestDTO {
     private String address;
 
     private String careType; // VISIT / CONSIGN?
-    private String petType;  // DOG / CAT / ETC
-    private String petName;
+    private List<PetInfoDTO> pets;
 
     private String requestNote;
 

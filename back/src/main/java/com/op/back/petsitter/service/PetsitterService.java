@@ -15,6 +15,7 @@ public class PetsitterService {
     private final PetsitterQueryService petsitterQueryService;
 
     public List<PetsitterCardDTO> getPetsitters(
+            String uid,
             String Address,
             String petType,
             Integer minPrice,
@@ -25,6 +26,7 @@ public class PetsitterService {
             Double userLng
     ) {
         return petsitterQueryService.getPetsitters(
+                uid,
                 Address,
                 petType,
                 minPrice,
