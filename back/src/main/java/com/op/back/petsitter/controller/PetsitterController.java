@@ -20,6 +20,7 @@ public class PetsitterController {
     // 거리 기준 모든 펫시터 조회
     @GetMapping
     public ResponseEntity<List<PetsitterCardDTO>> getPetsitters(
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) String region,
             @RequestParam(required = false) String petType,
             @RequestParam(required = false) Integer minPrice,
@@ -29,8 +30,11 @@ public class PetsitterController {
             @RequestParam Double lat,
             @RequestParam Double lng
     ) {
+        String uid = jwtUtil.getUid(authHeader.substring(7));
+
         return ResponseEntity.ok(
                 petsitterService.getPetsitters(
+                        uid,
                         region, petType, minPrice, maxPrice,
                         reserveAvailable, sort, lat, lng
                 )
