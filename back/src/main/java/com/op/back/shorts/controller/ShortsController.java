@@ -129,7 +129,7 @@ public class ShortsController {
         }
 
         //내가 누른 북마크 (쇼츠)
-        @GetMapping("/{uid}/likes")
+        @GetMapping("/{uid}/bookmarks")
         public List<ShortsResponse> getBookmarkedShorts(@PathVariable String uid)
                 throws Exception {
                 return shortsService.getBookmarkedShorts(uid);
