@@ -21,6 +21,7 @@ public class PostController {
 
     private final PostService postService;
 
+
     //현재 인증된 사용자 Uid 가져오기
     private String currentUid() {
         return (String) SecurityContextHolder
@@ -135,4 +136,19 @@ public class PostController {
 
         return postService.search(q, size, currentUid());
     }
+
+    //내가 누른 좋아요 포스트
+    @GetMapping("/{uid}/likes")
+    public List<PostResponse> getLikedPosts(@PathVariable String uid)
+            throws Exception {
+        return postService.getLikedPosts(uid);
+    }
+
+    //내가 누른 북마크 포스트
+    @GetMapping("/{uid}/bookmarks")
+    public List<PostResponse> getBookmarkedPosts(@PathVariable String uid)
+            throws Exception {
+        return postService.getBookmarkedPosts(uid);
+    }
+
 }
