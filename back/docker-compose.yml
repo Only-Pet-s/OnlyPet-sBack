@@ -15,6 +15,11 @@ services:
     restart: unless-stopped
     networks:
       - onlypets-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   back:
     image: ghcr.io/only-pet-s/onlypets-back:latest
@@ -30,6 +35,11 @@ services:
     restart: unless-stopped
     networks:
       - onlypets-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
@@ -41,6 +51,11 @@ services:
     restart: unless-stopped
     networks:
       - onlypets-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.13.4
@@ -58,3 +73,5 @@ services:
 networks:
   onlypets-net:
     driver: bridge
+
+    
