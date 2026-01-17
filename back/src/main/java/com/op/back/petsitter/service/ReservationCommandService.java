@@ -112,8 +112,7 @@ public class ReservationCommandService {
                 data.put("phone", userInfo.get("phone"));
                 data.put("address", userInfo.get("address"));
                 data.put("careType", req.getCareType());
-                data.put("petType", req.getPetType());
-                data.put("petName", req.getPetName());
+                data.put("pets", req.getPets());
                 if (req.getRequestNote() != null) {
                     data.put("requestNote", req.getRequestNote());
                 }

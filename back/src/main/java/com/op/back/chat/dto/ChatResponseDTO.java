@@ -21,4 +21,6 @@ public class ChatResponseDTO {
 
     private String content;
     private Timestamp createdAt;
+
+    private boolean read;
 }

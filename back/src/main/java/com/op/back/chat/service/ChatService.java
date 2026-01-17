@@ -156,7 +156,8 @@ public class ChatService {
                     profile.get("nickname"),
                     profile.get("profileImageUrl"),
                     doc.getString("content"),
-                    (Timestamp) doc.get("createdAt")
+                    (Timestamp) doc.get("createdAt"),
+                    Boolean.TRUE.equals(doc.getBoolean("read"))
             );
         }).toList();
     }
@@ -208,8 +209,11 @@ public class ChatService {
                 .whereEqualTo("read", false)
                 .get().get();
 
-        for(QueryDocumentSnapshot doc : snapshot){
-            doc.getReference().update("read", true);
+        for (QueryDocumentSnapshot doc : snapshot) {
+            String senderUid = doc.getString("senderUid");
+            if (!uid.equals(senderUid)) {
+                doc.getReference().update("read", true).get(); // 기다리기
+            }
         }
     }
 }
