@@ -23,4 +23,5 @@ public class ReadUserReservationDTO {
     private String requestNote;
     private Double mannerTemp;
     private Double rating;
+    private String careType;
 }

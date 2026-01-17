@@ -150,7 +150,8 @@ public class ReservationQueryService {
                     readPets(doc),
                     doc.getString("requestNote"),
                     mannerTemp,
-                    rating
+                    rating,
+                    doc.getString("careType")
 //                    petsitter.getDouble("mannerTemp"),
 //                    petsitter.getDouble("rating")
             ));
