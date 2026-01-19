@@ -11,7 +11,7 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       # acme.sh가 설치해준 인증서 위치 마운트
-      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/conf:/etc/letsencrypt:ro
     depends_on:
       - back
     restart: unless-stopped
@@ -23,7 +23,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-	#<GITHUB_ID>같은거 쓰지마세요
+  #<GITHUB_ID>같은거 쓰지마세요
   back:
     image: ghcr.io/only-pet-s/onlypets-back:latest
     container_name: onlypets-back
@@ -40,7 +40,7 @@ services:
     networks:
       - onlypets-net
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
@@ -49,9 +49,9 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
     container_name: onlypets-es
     environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
     restart: unless-stopped
     networks:
       - onlypets-net
@@ -61,7 +61,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # kibana:
+    # kibana:
   #   image: docker.elastic.co/kibana/kibana:8.13.4
   #   container_name: onlypets-kibana
   #   depends_on:
