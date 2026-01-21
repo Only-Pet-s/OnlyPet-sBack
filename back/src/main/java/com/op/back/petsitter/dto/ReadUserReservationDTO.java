@@ -24,4 +24,5 @@ public class ReadUserReservationDTO {
     private Double mannerTemp;
     private Double rating;
     private String careType;
+    private Boolean canReview;
 }
