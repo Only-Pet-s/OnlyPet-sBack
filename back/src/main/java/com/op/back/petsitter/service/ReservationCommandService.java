@@ -51,7 +51,9 @@ public class ReservationCommandService {
                 if (hours <= 0) {
                     throw new ReservationException("예약 시간은 최소 1시간 이상이어야 합니다.");
                 }
-
+                if(uid.equals(req.getPetsitterId())){
+                    throw new ReservationException("자기 자신한테 예약할 수 없습니다.");
+                }
                 DocumentSnapshot petsitterInfo = firestore.collection("petsitters").document(req.getPetsitterId()).get().get();
 
                 Long price = petsitterInfo.getLong("price");
@@ -110,8 +112,7 @@ public class ReservationCommandService {
                 data.put("phone", userInfo.get("phone"));
                 data.put("address", userInfo.get("address"));
                 data.put("careType", req.getCareType());
-                data.put("petType", req.getPetType());
-                data.put("petName", req.getPetName());
+                data.put("pets", req.getPets());
                 if (req.getRequestNote() != null) {
                     data.put("requestNote", req.getRequestNote());
                 }

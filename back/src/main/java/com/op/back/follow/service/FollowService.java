@@ -129,10 +129,18 @@ public class FollowService {
                         .collection("users").document(targetUid)
                         .get().get();
 
+                Boolean isFollowing;
+                if ("following".equals(type)) {
+                    isFollowing = true;
+                } else {
+                    isFollowing = isFollowing(uid, targetUid);
+                }
+
                 result.add(new FollowUserDTO(
                         targetUid,
                         userDoc.getString("nickname"),
-                        userDoc.getString("profileImageUrl")
+                        userDoc.getString("profileImageUrl"),
+                        isFollowing
                 ));
             }
             return result;

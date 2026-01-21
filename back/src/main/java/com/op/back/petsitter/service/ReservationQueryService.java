@@ -133,6 +133,20 @@ public class ReservationQueryService {
             } catch (Exception e) {
                 continue;
             }
+            boolean canReview = false;
+            String reservationStatus = doc.getString("reservationStatus");
+            try {
+                QuerySnapshot reviewSnapshots = firestore.collection("petsitters")
+                        .document(petsitterId)
+                        .collection("reviews")
+                        .whereEqualTo("userUid", uid)
+                        .limit(1)
+                        .get().get();
+                boolean hasReview = !reviewSnapshots.isEmpty();
+                canReview = !hasReview && "COMPLETED".equals(reservationStatus); // 리뷰가 존재하지 않고, 예약상태가 COMPLETED인 경우
+            } catch (Exception e) {
+                canReview = false;
+            }
             double mannerTemp = petsitter.getDouble("mannerTemp")!= null ? petsitter.getDouble("mannerTemp") : 0;
             double rating = petsitter.getDouble("rating")!= null ? petsitter.getDouble("rating") : 0;
             result.add(new ReadUserReservationDTO(
@@ -147,10 +161,12 @@ public class ReservationQueryService {
                     petsitter.getString("address"),
                     petsitter.getString("phone"),
                     doc.getLong("price"),
-                    doc.getString("petName"),
+                    readPets(doc),
                     doc.getString("requestNote"),
                     mannerTemp,
-                    rating
+                    rating,
+                    doc.getString("careType"),
+                    canReview
 //                    petsitter.getDouble("mannerTemp"),
 //                    petsitter.getDouble("rating")
             ));
@@ -207,8 +223,7 @@ public class ReservationQueryService {
                     doc.getString("date"),
                     doc.getString("startTime"),
                     doc.getString("endTime"),
-                    doc.getString("petType"),
-                    doc.getString("petName"),
+                    readPets(doc),
                     doc.getString("requestNote"),
                     doc.getString("reservationStatus")
             ));
@@ -400,5 +415,30 @@ public class ReservationQueryService {
     // db에 들어갈 일주일 단위
     private String toShortDay(DayOfWeek dayOfWeek) {
         return dayOfWeek.name().substring(0, 3); // MONDAY -> MON
+    }
+
+    private List<PetInfoDTO> readPets(DocumentSnapshot doc) {
+        Object rawPets = doc.get("pets");
+        if (rawPets instanceof List<?> list) {
+            List<PetInfoDTO> pets = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    Object nameObj = map.get("name");
+                    Object typeObj = map.get("type");
+                    pets.add(new PetInfoDTO(
+                            nameObj != null ? nameObj.toString() : null,
+                            typeObj != null ? typeObj.toString() : null
+                    ));
+                }
+            }
+            return pets;
+        }
+
+        String petName = doc.getString("petName");
+        String petType = doc.getString("petType");
+        if (petName != null || petType != null) {
+            return List.of(new PetInfoDTO(petName, petType));
+        }
+        return List.of();
     }
 }
