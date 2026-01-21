@@ -133,6 +133,20 @@ public class ReservationQueryService {
             } catch (Exception e) {
                 continue;
             }
+            boolean canReview = false;
+            String reservationStatus = doc.getString("reservationStatus");
+            try {
+                QuerySnapshot reviewSnapshots = firestore.collection("petsitters")
+                        .document(petsitterId)
+                        .collection("reviews")
+                        .whereEqualTo("userUid", uid)
+                        .limit(1)
+                        .get().get();
+                boolean hasReview = !reviewSnapshots.isEmpty();
+                canReview = !hasReview && "COMPLETED".equals(reservationStatus); // 리뷰가 존재하지 않고, 예약상태가 COMPLETED인 경우
+            } catch (Exception e) {
+                canReview = false;
+            }
             double mannerTemp = petsitter.getDouble("mannerTemp")!= null ? petsitter.getDouble("mannerTemp") : 0;
             double rating = petsitter.getDouble("rating")!= null ? petsitter.getDouble("rating") : 0;
             result.add(new ReadUserReservationDTO(
@@ -151,7 +165,8 @@ public class ReservationQueryService {
                     doc.getString("requestNote"),
                     mannerTemp,
                     rating,
-                    doc.getString("careType")
+                    doc.getString("careType"),
+                    canReview
 //                    petsitter.getDouble("mannerTemp"),
 //                    petsitter.getDouble("rating")
             ));

@@ -50,8 +50,11 @@ public class PetsitterReviewCommandService {
             throw new ReviewException("예약 정보가 일치하지 않습니다.");
         }
 
-        if (!"RESERVED".equals(reservation.getString("reservationStatus"))
-                || !"COMPLETED".equals(reservation.getString("paymentStatus"))) {
+//        if (!"RESERVED".equals(reservation.getString("reservationStatus"))
+//                || !"COMPLETED".equals(reservation.getString("paymentStatus"))) {
+//            throw new ReviewException("리뷰 작성 조건을 만족하지 않습니다.");
+//        }
+        if (!"COMPLETED".equals(reservation.getString("reservationStatus"))) {
             throw new ReviewException("리뷰 작성 조건을 만족하지 않습니다.");
         }
 
