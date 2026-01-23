@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,11 +16,22 @@ import org.springframework.stereotype.Component;
 public class PostIndexInitializer {
 
     private static final String INDEX = "post-index";
-
     private final ElasticsearchClient client;
+    private volatile boolean initialized = false;
 
     @EventListener(ApplicationReadyEvent.class)
-    public void init() {
+    public void onReady() {
+        tryInit();
+    }
+
+    @Scheduled(fixedDelay = 10000)
+    public void retry() {
+        if (!initialized) {
+            tryInit();
+        }
+    }
+
+    private void tryInit() {
         try {
             boolean exists = client.indices()
                     .exists(e -> e.index(INDEX))
@@ -31,6 +43,7 @@ public class PostIndexInitializer {
             } else {
                 log.info("[ES] post-index already exists");
             }
+            initialized = true;
         } catch (Exception e) {
             log.error("[ES] post-index initialization failed. Search disabled.", e);
         }

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -15,11 +16,22 @@ import org.springframework.stereotype.Component;
 public class LectureIndexInitializer {
 
     private static final String INDEX = "lecture-index";
-
     private final ElasticsearchClient client;
+    private volatile boolean initialized = false;
 
     @EventListener(ApplicationReadyEvent.class)
-    public void init() {
+    public void onReady() {
+        tryInit();
+    }
+
+    @Scheduled(fixedDelay = 10000)
+    public void retry() {
+        if (!initialized) {
+            tryInit();
+        }
+    }
+
+    public void tryInit() {
         try {
             boolean exists = client.indices()
                     .exists(e -> e.index(INDEX))
@@ -31,6 +43,7 @@ public class LectureIndexInitializer {
             } else {
                 log.info("[ES] lecture-index already exists");
             }
+            initialized = true;
         } catch (Exception e) {
             log.error("[ES] lecture-index initialization failed. Search disabled.", e);
         }
